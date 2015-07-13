@@ -1,3 +1,5 @@
+#include <EEPROM.h>
+#include <SoftwareSerial.h>
 #include <Average.h>
 #include <dht.h>
 #include <OneWire.h>
@@ -9,7 +11,7 @@ Average temperature(N_AVG);
 Average distance(N_AVG);
 #include "parnik.h"
 
-const char version[] = "0.0.1"; 
+const char version[] = "0.1.1"; 
 
 #define TEMP_FANS 27  // temperature for fans switching off
 #define TEMP_PUMP 23 // temperature - do not pump water if cold enought
@@ -23,12 +25,16 @@ const int tempPin = A0;
 const int echoPin = A1;
 //const int dhtPin = A2;
 const int dividerPin = A5;
+const int rxPin = 8; // connect to BT HC-05 TX pin
+const int txPin = 9; // connect to BT HC-05 RX pin
 const int triggerPin = 10;
 const int fanPin = 11;
 const int pumpPin = 12;
 
 const float Vpoliv = 1.0; // Liters per centigrade above TEMP_PUMP 
 const float Tpoliv = 4; // Watering every 4 hours
+
+SoftwareSerial mySerial(rxPin, txPin); // RX, TX 
 //DHT dht = DHT();
 // DS18S20 Temperature chip i/o
 OneWire ds(tempPin);  // on pin 10
@@ -54,10 +60,24 @@ float barrel_volume;
 
 Parnik parnik;
 Parnik *pp = &parnik;
+Settings settings;
+Settings *sp = &settings;
+int eeAddress = 0;
 
 void setup(void) {
+  byte b;
+  EEPROM[0] = 255;
   Serial.begin(9600);
   while (!Serial) {}
+  mySerial.begin(9600);
+  if (EEPROM.get(eeAddress, b) == 255) {
+    Serial.println("Setting not set yet, use defaults");
+    sp->temp_fans = TEMP_FANS;
+    sp->temp_pump = TEMP_PUMP;
+    EEPROM.put(eeAddress, settings);
+    Serial.println("Wrote defaults to EEPROM");
+  }
+  EEPROM.get(eeAddress, settings);
   sensors.begin();
 //  dht.attach(dhtPin);
   
@@ -85,6 +105,7 @@ void setup(void) {
 void loop(void) {
   unsigned int uS;
   unsigned int ms;
+  int c; // input char
   
   it++;
   // Timing
@@ -145,6 +166,22 @@ void loop(void) {
   if (Serial.available() > 0) { 
     Serial.read();
     serial_output();
+  }
+  /*
+   * Translate serial to BT 
+   */
+  if(Serial.available() > 0) {
+    c = Serial.read();
+    mySerial.print((char)c);
+    mySerial.flush();
+  }
+  /*
+   * Translate BT input to serial
+   */
+  if(mySerial.available() > 0) {
+    c = mySerial.read();
+    Serial.print((char)c);
+    Serial.flush();
   }
   /*
    * Fans control 
