@@ -11,9 +11,9 @@ Average temperature(N_AVG);
 Average distance(N_AVG);
 #include "parnik.h"
 
-const char version[] = "0.1.1"; 
+const char version[] = "0.1.3"; 
 
-#define TEMP_FANS 27  // temperature for fans switching off
+#define TEMP_FANS 27  // temperature for fans switching on
 #define TEMP_PUMP 23 // temperature - do not pump water if cold enought
 #define BARREL_HEIGHT 74.0 // max distanse from sonar to water surface which 
 #define BARREL_DIAMETER 57.0 // 200L
@@ -48,7 +48,8 @@ float distValue;
 float temp;
 float volt;
 float water, water0;
-int fanState = 0;
+boolean fansOn;
+boolean pumpOn;
 int pumpState = 0;
 int it = 0; // iteration counter;
 float workHours, fanHours, pumpHours; // work time (hours)
@@ -66,7 +67,7 @@ int eeAddress = 0;
 
 void setup(void) {
   byte b;
-  EEPROM[0] = 255;
+  //EEPROM[0] = 255;
   Serial.begin(9600);
   while (!Serial) {}
   mySerial.begin(9600);
@@ -85,14 +86,17 @@ void setup(void) {
   pinMode(pumpPin, OUTPUT);
   digitalWrite(fanPin, OFF);
   digitalWrite(pumpPin, OFF);
-  fanState = 0; 
+  fansOn = false; 
   fanMillis = 0;
-  pumpState = 0;
+  pumpOn = false;
   pumpMillis = 0; 
-  pp->temp_hi = TEMP_FANS;
-  pp->temp_lo = pp->temp_hi - 1.0;
-  pp->temp_pump = TEMP_PUMP;
   Serial.println(version);
+  Serial.print("Settings: temp_fans=");
+  Serial.print(sp->temp_fans);
+  Serial.print("C temp_pump=");
+  Serial.print(sp->temp_pump);
+  Serial.println("C");
+  
   workMillis = 0; // millis();
   lastTemp = lastDist = lastVolt = millis();
   h = 200.;
@@ -111,10 +115,10 @@ void loop(void) {
   // Timing
   delta = millis() - workMillis;
   workMillis += delta;
-  if (fanState) {
+  if (fansOn) {
     fanMillis += delta;
   }
-  if (pumpState) {
+  if (pumpOn) {
     pumpMillis += delta;
   }
   workHours = (float)workMillis/3600000.; // Hours;
@@ -128,7 +132,7 @@ void loop(void) {
   temp = sensors.getTempCByIndex(0);
   temperature.putValue(temp);  
   ms = millis();
-  if (ms - lastTemp > 3000) {
+  if (ms - lastTemp > 300) {
     pp->temp1 = temperature.getAverage();
     lastTemp = ms;
   }
@@ -143,20 +147,19 @@ void loop(void) {
   h *= (1 + 0.5*(pp->temp1 - 20)/(pp->temp1 + 273)); // take temperature into account
   distance.putValue(h);
   ms = millis();
-  if (ms - lastDist > 3000) {
+  if (ms - lastDist > 300) {
     pp->dist = distance.getAverage();
-    water = toVolume(pp->dist);
-    pp->vol = water;
+    pp->vol = toVolume(pp->dist);
     lastDist = ms;
   }
   /* 
    *  Measure voltage
    */
   dividerValue = (float)analogRead(dividerPin);  
-  volt = 55.52/1023.* dividerValue;
+  volt = 13.08/516* dividerValue;
   voltage.putValue(volt);
   ms = millis();
-  if (ms - lastVolt > 3000) {
+  if (ms - lastVolt > 300) {
     pp->volt = voltage.getAverage();
     lastVolt = ms;
   }
@@ -170,11 +173,13 @@ void loop(void) {
   /*
    * Translate serial to BT 
    */
+   /*
   if(Serial.available() > 0) {
     c = Serial.read();
     mySerial.print((char)c);
     mySerial.flush();
   }
+  */
   /*
    * Translate BT input to serial
    */
@@ -186,40 +191,39 @@ void loop(void) {
   /*
    * Fans control 
    */ 
-  if (fanState == 1) {
-     if (temp < pp->temp_lo) {
+  if (fansOn) {
+     if (pp->temp1 < sp->temp_fans - 1.0) {
        digitalWrite(fanPin, OFF);
-       fanState = 0;  
-       pp->fans = fanState;  
+       fansOn = false;  
+       pp->fans = 0;  
      } 
   } else {
-     if (temp > pp->temp_hi) {
+     if (pp->temp1 > sp->temp_fans) {
        digitalWrite(fanPin, ON);    
-       fanState = 1;
-       pp->fans = fanState;
+       fansOn = true;
+       pp->fans = 1;
      } 
   }  
   /*
    * Pump control 
    */
-  if (pumpState == 1) {
-    float V;
-    V = (temp - pp->temp_pump) * Vpoliv;
-    //V = np == 1 ? 0.5 : V;  // First poliv - just for test
-     if ((water < 0.) || (temp < pp->temp_pump) || (water0 - water > V)) {
+  if (pumpOn) {
+     float V;
+     V = (pp->temp1 - sp->temp_pump) * Vpoliv;
+     if ((pp->vol < 0.) || (pp->temp1 < sp->temp_pump) || (water0 - pp->vol > V)) {
        digitalWrite(pumpPin, OFF);
-       pumpState = 0; 
-       pp->pump = pumpState;   
+       pumpOn = false; 
+       pp->pump = 0;   
      } 
   } else {
      if (workHours >= Tpoliv*np) {       
        np++;  
        // Switch on the pump only if warm enought and there is water in the barrel     
-       if ((temp > pp->temp_pump) && (water > 0.)) {
+       if ((pp->temp1 > sp->temp_pump) && (pp->vol > 0.)) {
          digitalWrite(pumpPin, ON);    
-         pumpState = 1;
-         pp->pump = pumpState;
-         water0 = water;
+         pumpOn = true;
+         pp->pump = 1;
+         water0 = pp->vol;
        }
      }  
   }  
@@ -238,7 +242,9 @@ void serial_output() {
   Serial.print(it);
   Serial.print(" T1=");
   Serial.print(pp->temp1);
-  Serial.print("C U=");
+  Serial.print("C readout=");
+  Serial.print(dividerValue);
+  Serial.print(" U=");
   Serial.print(volt);
   Serial.print(" Uavg=");
   Serial.print(pp->volt);
