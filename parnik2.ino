@@ -14,7 +14,7 @@ Average temperature(N_AVG);
 Average distance(N_AVG);
 #include "parnik.h"
 
-const char version[] = "0.2.3"; 
+const char version[] = "0.2.4"; 
 
 #define TEMP_FANS 27  // temperature for fans switching on
 #define TEMP_PUMP 23 // temperature - do not pump water if cold enought
@@ -43,8 +43,7 @@ const char pass[] = "mts";
 const char host[] = "www.xland.ru";
 //char req[] = "GET /cgi-bin/parnik_upd2?ts=1436946564&T=17.25:U:U:U:26:27:U&M=00:00&P=11.7:U&V=173.61:5.92 HTTP/1.0\r\n\r\n";
 //char buf[] = "GET /cgi-bin/parnik_upd2?ts=1435608900&T=17.25:U:U:U:26:27:U&M=00:00&P=11.7:U&V=173.61:5.92 HTTP/1.0\r\n\r\n";
-char obuf[160];
-char ibuf[240];
+char buf[240];
 GPRS gprs(9600);
 
 SoftwareSerial mySerial(rxPin, txPin); // RX, TX 
@@ -87,11 +86,11 @@ void setup(void) {
   while (!Serial) {}
   mySerial.begin(9600);
   if (EEPROM.get(eeAddress, b) == 255) {
-    Serial.println("Setting not set yet, use defaults");
+//    Serial.println("Setting not set yet, use defaults");
     sp->temp_fans = TEMP_FANS;
     sp->temp_pump = TEMP_PUMP;
     EEPROM.put(eeAddress, settings);
-    Serial.println("Wrote defaults to EEPROM");
+//    Serial.println("Wrote defaults to EEPROM");
   }
   EEPROM.get(eeAddress, settings);
   sensors.begin();
@@ -126,8 +125,8 @@ void setup(void) {
   Serial.println("GPRS initialized");
   
   workMillis = 0; // millis();
-  lastTemp = lastDist = lastVolt = millis();
-  ts = 0; // time is unknown yet;
+  lastTemp = lastDist = lastVolt = lastTimeSet= millis();
+  ts = 1300000000; // time is unknown yet;
   lastSent = 0;
   h = 200.;
   it = 0;
@@ -262,13 +261,13 @@ void loop(void) {
    * Send data with GPRS
    */
   ms = millis();
-  if (ms - lastSent > 30000) {  // try to send data every 30 sec
+  if (ms - lastSent > 30000) {  // try to send data every 300 sec
     if(gprs_send()) {
       String response;
       unsigned long ts1;
       
       Serial.println("Successfully sent!");
-      response = String(ibuf);
+      response = String(buf);
       if (response.indexOf("200 OK") == 9) {
         Serial.println("200 OK - true");
       }
@@ -321,6 +320,7 @@ boolean gprs_send()
   unsigned int len;
 
   ts += (long)((millis() - lastTimeSet)/1000);
+  lastTimeSet = millis();
   request += ts;
   request += "&T=";
   request += pp->temp1;
@@ -328,26 +328,38 @@ boolean gprs_send()
   request += sp->temp_fans -1;
   request += ":";
   request += sp->temp_fans;
-  request += ":U&M=00:00&P=11.7:U&V=173.61:5.92 HTTP/1.0\r\n\r\n";
+  request += ":";
+  request += sp->temp_pump;
+  request += "&M=";
+  request += pp->fans;
+  request += ":";
+  request += pp->pump;
+  request += "&P=";
+  request += pp->volt;
+  request += ":U&V=";
+  request += pp->vol;
+  request += ":";
+  request += pp->dist;
+  request += " HTTP/1.0\r\n\r\n";
 
   //char req[] = "GET /cgi-bin/parnik_upd2?ts=1435608900&T=17.25:U:U:U:26:27:U&M=00:00&P=11.7:U&V=173.61:5.92 HTTP/1.0\r\n\r\n";
   len = request.length()+1;
-  request.toCharArray(obuf, len);
+  request.toCharArray(buf, len);
 
   if (gprs.join(apn, user, pass)) {
     Serial.println("logged in");
     if (gprs.connect (TCP, host, 80, 100)) {
       Serial.println("Connected"); 
-      gprs.send(obuf, len);
+      gprs.send(buf, len);
       Serial.println("Sent: ");
-      Serial.println(obuf);
+      Serial.println(buf);
       Serial.print("req len=");
       Serial.println(len);
       Serial.println("Waiting for response...");
-      len = gprs.recv(ibuf, sizeof(ibuf)); 
-      ibuf[len+1] = 0;
+      len = gprs.recv(buf, sizeof(buf)); 
+      buf[len+1] = 0;
       Serial.println("Received: ");    
-      Serial.println(ibuf);
+      Serial.println(buf);
       Serial.print("length=");
       Serial.println(len);
     } else {
@@ -361,36 +373,5 @@ boolean gprs_send()
     Serial.println("GPRS login failed");
     return false;
   }
-}
-
-unsigned long str2ulong(String s) {
-  unsigned long num = 0;
-  byte digits[12];
-  s.getBytes(digits, s.length()+1);
-  for (int i = 0; i < 12; i++) {
-    if (digits[i] < '0' || digits[i] > '9') break;
-    num *= 10;
-    num += (digits[i] - '0');
-  }
-  return num;
-}
-
-void loop2(void) {
-  String str = "1436956918&something";
-  String req = "ts=";
-  unsigned long num;
-
-  num = str.toInt();
-  num += 300;
-  num -= (num % 300);
-  
-  Serial.print("Should be 1436956618: ");
-  Serial.println(num);
-
-  req += num;
-  req += "&temp=20.1";
-  Serial.println(req);
-  
-  delay(3000);
 }
 
