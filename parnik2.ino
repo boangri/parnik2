@@ -14,7 +14,7 @@ Average temperature(N_AVG);
 Average distance(N_AVG);
 #include "parnik.h"
 
-const char version[] = "0.2.2"; 
+const char version[] = "0.2.3"; 
 
 #define TEMP_FANS 27  // temperature for fans switching on
 #define TEMP_PUMP 23 // temperature - do not pump water if cold enought
@@ -44,7 +44,7 @@ const char host[] = "www.xland.ru";
 //char req[] = "GET /cgi-bin/parnik_upd2?ts=1436946564&T=17.25:U:U:U:26:27:U&M=00:00&P=11.7:U&V=173.61:5.92 HTTP/1.0\r\n\r\n";
 //char buf[] = "GET /cgi-bin/parnik_upd2?ts=1435608900&T=17.25:U:U:U:26:27:U&M=00:00&P=11.7:U&V=173.61:5.92 HTTP/1.0\r\n\r\n";
 char obuf[160];
-char ibuf[300];
+char ibuf[240];
 GPRS gprs(9600);
 
 SoftwareSerial mySerial(rxPin, txPin); // RX, TX 
@@ -66,11 +66,13 @@ boolean pumpOn;
 int pumpState = 0;
 int it = 0; // iteration counter;
 float workHours, fanHours, pumpHours; // work time (hours)
-unsigned long fanMillis, pumpMillis, workMillis, delta, lastTemp, lastDist, lastVolt, lastSend;
+unsigned long fanMillis, pumpMillis, workMillis, delta, lastTemp, lastDist, lastVolt, lastSent;
 int np = 0; /* poliv session number */
 float h; // distance from sonar to water surface, cm.
 float barrel_height;
 float barrel_volume;
+unsigned long ts; // secs, current time UNIX timestamp
+unsigned long lastTimeSet; //ms
 
 Parnik parnik;
 Parnik *pp = &parnik;
@@ -124,7 +126,9 @@ void setup(void) {
   Serial.println("GPRS initialized");
   
   workMillis = 0; // millis();
-  lastTemp = lastDist = lastVolt = lastSend = millis();
+  lastTemp = lastDist = lastVolt = millis();
+  ts = 0; // time is unknown yet;
+  lastSent = 0;
   h = 200.;
   it = 0;
   np = 0;
@@ -258,9 +262,30 @@ void loop(void) {
    * Send data with GPRS
    */
   ms = millis();
-  if (ms - lastSend > 30000) {
-    gprs_send();
-    lastSend = ms;
+  if (ms - lastSent > 30000) {  // try to send data every 30 sec
+    if(gprs_send()) {
+      String response;
+      unsigned long ts1;
+      
+      Serial.println("Successfully sent!");
+      response = String(ibuf);
+      if (response.indexOf("200 OK") == 9) {
+        Serial.println("200 OK - true");
+      }
+      if (response.indexOf("success") > 9) {
+        Serial.println("success - true");
+      }     
+      response = response.substring(response.indexOf("ts=")+3);
+      Serial.print("TS=");
+      //Serial.println(response);
+      ts1 = response.toInt();
+      if ((ts == 0) && (ts1 > 1400000000)) {
+        ts = ts1;
+        lastTimeSet = millis();
+      }
+      Serial.println(ts1);
+    }
+    lastSent = ms;
   }
 }  
 
@@ -295,7 +320,8 @@ boolean gprs_send()
   String request = "GET /cgi-bin/parnik_upd2?ts="; 
   unsigned int len;
 
-  request += "1436948031";
+  ts += (long)((millis() - lastTimeSet)/1000);
+  request += ts;
   request += "&T=";
   request += pp->temp1;
   request += ":U:U:U:";
@@ -335,5 +361,36 @@ boolean gprs_send()
     Serial.println("GPRS login failed");
     return false;
   }
+}
+
+unsigned long str2ulong(String s) {
+  unsigned long num = 0;
+  byte digits[12];
+  s.getBytes(digits, s.length()+1);
+  for (int i = 0; i < 12; i++) {
+    if (digits[i] < '0' || digits[i] > '9') break;
+    num *= 10;
+    num += (digits[i] - '0');
+  }
+  return num;
+}
+
+void loop2(void) {
+  String str = "1436956918&something";
+  String req = "ts=";
+  unsigned long num;
+
+  num = str.toInt();
+  num += 300;
+  num -= (num % 300);
+  
+  Serial.print("Should be 1436956618: ");
+  Serial.println(num);
+
+  req += num;
+  req += "&temp=20.1";
+  Serial.println(req);
+  
+  delay(3000);
 }
 
