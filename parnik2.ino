@@ -1,3 +1,6 @@
+#include <GPRS_Shield_Arduino.h>
+#include <sim900.h>
+
 #include <EEPROM.h>
 #include <SoftwareSerial.h>
 #include <Average.h>
@@ -11,7 +14,7 @@ Average temperature(N_AVG);
 Average distance(N_AVG);
 #include "parnik.h"
 
-const char version[] = "0.1.3"; 
+const char version[] = "0.2.2"; 
 
 #define TEMP_FANS 27  // temperature for fans switching on
 #define TEMP_PUMP 23 // temperature - do not pump water if cold enought
@@ -34,6 +37,16 @@ const int pumpPin = 12;
 const float Vpoliv = 1.0; // Liters per centigrade above TEMP_PUMP 
 const float Tpoliv = 4; // Watering every 4 hours
 
+const char apn[] = "internet.mts.ru"; 
+const char user[] = "mts";
+const char pass[] = "mts";
+const char host[] = "www.xland.ru";
+//char req[] = "GET /cgi-bin/parnik_upd2?ts=1436946564&T=17.25:U:U:U:26:27:U&M=00:00&P=11.7:U&V=173.61:5.92 HTTP/1.0\r\n\r\n";
+//char buf[] = "GET /cgi-bin/parnik_upd2?ts=1435608900&T=17.25:U:U:U:26:27:U&M=00:00&P=11.7:U&V=173.61:5.92 HTTP/1.0\r\n\r\n";
+char obuf[160];
+char ibuf[300];
+GPRS gprs(9600);
+
 SoftwareSerial mySerial(rxPin, txPin); // RX, TX 
 //DHT dht = DHT();
 // DS18S20 Temperature chip i/o
@@ -53,7 +66,7 @@ boolean pumpOn;
 int pumpState = 0;
 int it = 0; // iteration counter;
 float workHours, fanHours, pumpHours; // work time (hours)
-unsigned long fanMillis, pumpMillis, workMillis, delta, lastTemp, lastDist, lastVolt;
+unsigned long fanMillis, pumpMillis, workMillis, delta, lastTemp, lastDist, lastVolt, lastSend;
 int np = 0; /* poliv session number */
 float h; // distance from sonar to water surface, cm.
 float barrel_height;
@@ -96,9 +109,22 @@ void setup(void) {
   Serial.print("C temp_pump=");
   Serial.print(sp->temp_pump);
   Serial.println("C");
+
+  gprs.powerUpDown();
+  // РїСЂРѕРІРµСЂСЏРµРј, РµСЃС‚СЊ Р»Рё СЃРІСЏР·СЊ СЃ GPRS-СѓСЃС‚СЂРѕР№СЃС‚РІРѕРј
+  while (!gprs.init()) {
+    // РµСЃР»Рё СЃРІСЏР·Рё РЅРµС‚, Р¶РґС‘Рј 1 СЃРµРєСѓРЅРґСѓ
+    // Рё РІС‹РІРѕРґРёРј СЃРѕРѕР±С‰РµРЅРёРµ РѕР± РѕС€РёР±РєРµ;
+    // РїСЂРѕС†РµСЃСЃ РїРѕРІС‚РѕСЂСЏРµС‚СЃСЏ РІ С†РёРєР»Рµ,
+    // РїРѕРєР° РЅРµ РїРѕСЏРІРёС‚СЃСЏ РѕС‚РІРµС‚ РѕС‚ GPRS-СѓСЃС‚СЂРѕР№СЃС‚РІР°
+    delay(1000);
+    Serial.print("Init error\r\n");
+  }
+  // РІС‹РІРѕРґРёРј СЃРѕРѕР±С‰РµРЅРёРµ РѕР± СѓРґР°С‡РЅРѕР№ РёРЅРёС†РёР°Р»РёР·Р°С†РёРё GPRS Shield
+  Serial.println("GPRS initialized");
   
   workMillis = 0; // millis();
-  lastTemp = lastDist = lastVolt = millis();
+  lastTemp = lastDist = lastVolt = lastSend = millis();
   h = 200.;
   it = 0;
   np = 0;
@@ -188,6 +214,7 @@ void loop(void) {
     Serial.print((char)c);
     Serial.flush();
   }
+
   /*
    * Fans control 
    */ 
@@ -227,6 +254,14 @@ void loop(void) {
        }
      }  
   }  
+  /*
+   * Send data with GPRS
+   */
+  ms = millis();
+  if (ms - lastSend > 30000) {
+    gprs_send();
+    lastSend = ms;
+  }
 }  
 
 /*
@@ -253,5 +288,52 @@ void serial_output() {
   Serial.print(" cm. Volume: ");
   Serial.print(pp->vol);
   Serial.println(" L.");
+}
+
+boolean gprs_send() 
+{
+  String request = "GET /cgi-bin/parnik_upd2?ts="; 
+  unsigned int len;
+
+  request += "1436948031";
+  request += "&T=";
+  request += pp->temp1;
+  request += ":U:U:U:";
+  request += sp->temp_fans -1;
+  request += ":";
+  request += sp->temp_fans;
+  request += ":U&M=00:00&P=11.7:U&V=173.61:5.92 HTTP/1.0\r\n\r\n";
+
+  //char req[] = "GET /cgi-bin/parnik_upd2?ts=1435608900&T=17.25:U:U:U:26:27:U&M=00:00&P=11.7:U&V=173.61:5.92 HTTP/1.0\r\n\r\n";
+  len = request.length()+1;
+  request.toCharArray(obuf, len);
+
+  if (gprs.join(apn, user, pass)) {
+    Serial.println("logged in");
+    if (gprs.connect (TCP, host, 80, 100)) {
+      Serial.println("Connected"); 
+      gprs.send(obuf, len);
+      Serial.println("Sent: ");
+      Serial.println(obuf);
+      Serial.print("req len=");
+      Serial.println(len);
+      Serial.println("Waiting for response...");
+      len = gprs.recv(ibuf, sizeof(ibuf)); 
+      ibuf[len+1] = 0;
+      Serial.println("Received: ");    
+      Serial.println(ibuf);
+      Serial.print("length=");
+      Serial.println(len);
+    } else {
+      gprs.close();
+      Serial.println("Could not connect");
+      return false;
+    }  
+    gprs.close();
+    return true;
+  } else {
+    Serial.println("GPRS login failed");
+    return false;
+  }
 }
 
