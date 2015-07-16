@@ -14,7 +14,7 @@ Average temperature(N_AVG);
 Average distance(N_AVG);
 #include "parnik.h"
 
-const char version[] = "0.2.4"; 
+const char version[] = "0.2.5"; 
 
 #define TEMP_FANS 27  // temperature for fans switching on
 #define TEMP_PUMP 23 // temperature - do not pump water if cold enought
@@ -62,6 +62,7 @@ float volt;
 float water, water0;
 boolean fansOn;
 boolean pumpOn;
+boolean readyToSend;
 int pumpState = 0;
 int it = 0; // iteration counter;
 float workHours, fanHours, pumpHours; // work time (hours)
@@ -125,9 +126,9 @@ void setup(void) {
   Serial.println("GPRS initialized");
   
   workMillis = 0; // millis();
-  lastTemp = lastDist = lastVolt = lastTimeSet= millis();
+  lastTemp = lastDist = lastVolt = lastTimeSet = lastSent = 0;
   ts = 1300000000; // time is unknown yet;
-  lastSent = 0;
+  readyToSend = true;
   h = 200.;
   it = 0;
   np = 0;
@@ -260,31 +261,34 @@ void loop(void) {
   /*
    * Send data with GPRS
    */
-  ms = millis();
-  if (ms - lastSent > 30000) {  // try to send data every 300 sec
+  if (readyToSend) {  
+    readyToSend = false;
+    lastSent = millis();
     if(gprs_send()) {
       String response;
       unsigned long ts1;
       
-      Serial.println("Successfully sent!");
+      Serial.println("sent!");
       response = String(buf);
+      Serial.println(response);
       if (response.indexOf("200 OK") == 9) {
-        Serial.println("200 OK - true");
+        Serial.println("200 OK");
       }
       if (response.indexOf("success") > 9) {
-        Serial.println("success - true");
+        Serial.println("suc");
       }     
       response = response.substring(response.indexOf("ts=")+3);
       Serial.print("TS=");
       //Serial.println(response);
       ts1 = response.toInt();
-      if ((ts == 0) && (ts1 > 1400000000)) {
+      if ((ts < 1400000000) && (ts1 > 1400000000)) {
         ts = ts1;
         lastTimeSet = millis();
       }
       Serial.println(ts1);
     }
-    lastSent = ms;
+  } else {
+    if (millis() - lastSent > 30000) readyToSend = true;
   }
 }  
 
@@ -301,7 +305,7 @@ void serial_output() {
   Serial.print(it);
   Serial.print(" T1=");
   Serial.print(pp->temp1);
-  Serial.print("C readout=");
+  Serial.print("C val=");
   Serial.print(dividerValue);
   Serial.print(" U=");
   Serial.print(volt);
@@ -347,30 +351,30 @@ boolean gprs_send()
   request.toCharArray(buf, len);
 
   if (gprs.join(apn, user, pass)) {
-    Serial.println("logged in");
+    Serial.println("s join");
     if (gprs.connect (TCP, host, 80, 100)) {
-      Serial.println("Connected"); 
+      Serial.println("Con!"); 
       gprs.send(buf, len);
       Serial.println("Sent: ");
       Serial.println(buf);
       Serial.print("req len=");
       Serial.println(len);
-      Serial.println("Waiting for response...");
+      Serial.println("Wait");
       len = gprs.recv(buf, sizeof(buf)); 
       buf[len+1] = 0;
-      Serial.println("Received: ");    
+      Serial.println("Rcv ");    
       Serial.println(buf);
-      Serial.print("length=");
+      Serial.print("len=");
       Serial.println(len);
     } else {
       gprs.close();
-      Serial.println("Could not connect");
+      Serial.println("f conn");
       return false;
     }  
     gprs.close();
     return true;
   } else {
-    Serial.println("GPRS login failed");
+    Serial.println("f join");
     return false;
   }
 }
