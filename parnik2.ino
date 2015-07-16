@@ -78,6 +78,8 @@ Parnik parnik;
 Parnik *pp = &parnik;
 Settings settings;
 Settings *sp = &settings;
+Packet pack[2];
+Packet *dp = pack;
 int eeAddress = 0;
 
 void setup(void) {
@@ -258,6 +260,15 @@ void loop(void) {
        }
      }  
   }  
+  if (true) {
+    dp->ts = ts + (millis() - lastTimeSet)/1000;
+    dp->temp1 = pp->temp1;
+    dp->volt = pp->volt;
+    dp->vol = pp->vol;
+    dp->dist = pp->dist;
+    dp->fans = pp->fans;
+    dp->pump = pp->pump;
+  }
   /*
    * Send data with GPRS
    */
@@ -341,7 +352,7 @@ void serial_output() {
 
 boolean gprs_send() 
 {
-  String request = "GET /cgi-bin/parnik_upd2?ts="; 
+  String request = "GET /cgi-bin/parnik2_upd?ts="; 
   unsigned int len;
 
   ts += (long)((millis() - lastTimeSet)/1000);
@@ -349,9 +360,7 @@ boolean gprs_send()
   request += ts;
   request += "&T=";
   request += pp->temp1;
-  request += ":U:U:U:";
-  request += sp->temp_fans -1;
-  request += ":";
+  request += ":U:U:U:U:";
   request += sp->temp_fans;
   request += ":";
   request += sp->temp_pump;
