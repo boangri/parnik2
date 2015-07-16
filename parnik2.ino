@@ -14,7 +14,7 @@ Average temperature(N_AVG);
 Average distance(N_AVG);
 #include "parnik.h"
 
-const char version[] = "0.2.8"; 
+const char version[] = "0.2.9"; 
 
 #define TEMP_FANS 27  // temperature for fans switching on
 #define TEMP_PUMP 23 // temperature - do not pump water if cold enought
@@ -314,46 +314,40 @@ void loop(void) {
       Serial.println("sent!");
       response = String(buf);
       Serial.println(response);
-      if (response.indexOf("200 OK") == 9) {
-        Serial.println("200 OK");
-      }
-      if (response.indexOf("success") > 9) {
-        Serial.println("suc");
-      }     
-      response = response.substring(response.indexOf("ts=")+3);
-      Serial.print("TS=");
-      //Serial.println(response);
-      n = response.toInt();
-      if ((ts < 1400000000) && (n > 1400000000)) {
-        ts = n;
-        lastTimeSet = millis();
-      }
-      Serial.println(n);
-      if ((i = response.indexOf("tf=")) > 0) {
-        response = response.substring(i+3);
+      if ((response.indexOf("200 OK") == 9)&&(response.indexOf("success") > 9)) { // sent successfully
+        Serial.println("suc");     
+        response = response.substring(response.indexOf("ts=")+3);
         n = response.toInt();
-        if ((n > 0) && (n < 999)) {
-          sp->temp_fans = ((float)n)/10. -30.;
-          EEPROM.put(eeAddress, settings);
-          Serial.print("s tf=");
-          Serial.println(sp->temp_fans);
+        if ((ts < 1400000000) && (n > 1400000000)) {
+          ts = n;
+          lastTimeSet = millis();
         }
-      }
-      if ((i = response.indexOf("tp=")) > 0) {
-        response = response.substring(i+3);
-        n = response.toInt();
-        if ((n > 0) && (n < 999)) {
-          sp->temp_pump = ((float)n)/10. -30.;
-          EEPROM.put(eeAddress, settings);
-          Serial.print("s tp=");
-          Serial.println(sp->temp_pump);
+        if ((i = response.indexOf("tf=")) > 0) {
+          response = response.substring(i+3);
+          n = response.toInt();
+          if ((n > 0) && (n < 999)) {
+            sp->temp_fans = ((float)n)/10. -30.;
+            EEPROM.put(eeAddress, settings);
+            Serial.print("s tf=");
+            Serial.println(sp->temp_fans);
+          }
         }
-      }
-      n_ring--;
-      rp++;
-      if (++ir == N_RING) {
-        ir = 0;
-        rp = pack;
+        if ((i = response.indexOf("tp=")) > 0) {
+          response = response.substring(i+3);
+          n = response.toInt();
+          if ((n > 0) && (n < 999)) {
+            sp->temp_pump = ((float)n)/10. -30.;
+            EEPROM.put(eeAddress, settings);
+            Serial.print("s tp=");
+            Serial.println(sp->temp_pump);
+          }
+        }
+        n_ring--;
+        rp++;
+        if (++ir == N_RING) {
+          ir = 0;
+          rp = pack;
+        }
       }
     }
   } 
