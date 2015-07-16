@@ -16,7 +16,7 @@ struct {
 } typedef Settings;
 
 struct {
-  unsigned int ts;
+  unsigned long ts;
   float temp1;
   float volt;
   float vol;
