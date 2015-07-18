@@ -92,6 +92,10 @@ unsigned long lastAttempt; // ms - last attempt to send data over GPRS
 // EEPROM
 int eeAddress = 0;
 
+// Bluetooth 
+char bt_buf[80];
+char *bp;
+
 void setup(void) {
   byte b;
   //EEPROM[0] = 255;
@@ -153,6 +157,8 @@ void setup(void) {
   wp = rp = pack;
   n_ring = iw = ir = 0;
   lastRingWritten = 0;
+
+  bp = bt_buf;
 }
 
 void loop(void) {
@@ -234,6 +240,13 @@ void loop(void) {
    */
   if(mySerial.available() > 0) {
     c = mySerial.read();
+    if (c == ';') {
+      *bp = 0;
+      bp = bt_buf;
+      bt_cmd(bp);
+    } else {
+      *bp++ = c;
+    }
     Serial.print((char)c);
     Serial.flush();
   }
@@ -383,7 +396,7 @@ boolean gprs_send()
 {
   String request = "GET /cgi-bin/parnik2_upd?ts="; 
   unsigned int len;
-
+return false;
   request += rp->ts;
   request += "&T=";
   request += rp->temp1;
@@ -433,6 +446,26 @@ boolean gprs_send()
   } else {
     Serial.println("f join");
     return false;
+  }
+}
+
+void bt_cmd(char *cmd) {
+  String s = String(cmd);
+  Serial.println(s);
+  if (s.indexOf("par=?") == 0) {
+    s = String("t1=");
+    s += pp->temp1;
+    s += ";vl=";
+    s += pp->vol;
+    s += ";vt=";
+    s += pp->volt;
+    s += ";f=";
+    s += pp->fans;
+    s += ";p=";
+    s += pp->pump;
+    s += ";";
+    mySerial.println(s);
+    mySerial.write((byte)0);
   }
 }
 
