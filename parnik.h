@@ -14,3 +14,15 @@ struct {
   float barrel_diameter;
   float barrel_height;
 } typedef Settings;
+
+struct {
+  unsigned long ts;
+  float temp1;
+  float volt;
+  float vol;
+  float dist;
+  int fans;
+  int pump;
+} typedef Packet;
+
+
