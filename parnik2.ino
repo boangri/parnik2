@@ -14,7 +14,7 @@ Average temperature(N_AVG);
 Average distance(N_AVG);
 #include "parnik.h"
 
-const char version[] = "0.2.9"; 
+const char version[] = "0.3.1"; 
 
 #define TEMP_FANS 27  // temperature for fans switching on
 #define TEMP_PUMP 23 // temperature - do not pump water if cold enought
