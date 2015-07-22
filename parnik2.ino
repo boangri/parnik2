@@ -9,12 +9,15 @@
 #include <DallasTemperature.h>
 #include <NewPing.h>
 
+#define USE_GPRS true
+#define DEBUG true
+
 Average voltage(N_AVG);
-Average temperature(N_AVG);
+//Average temperature(N_AVG);
 Average distance(N_AVG);
 #include "parnik.h"
 
-const char version[] = "0.3.1"; 
+const char version[] = "0.4.1"; 
 
 #define TEMP_FANS 27  // temperature for fans switching on
 #define TEMP_PUMP 23 // temperature - do not pump water if cold enought
@@ -51,6 +54,10 @@ SoftwareSerial mySerial(rxPin, txPin); // RX, TX
 OneWire ds(tempPin);  // on pin 10
 // Pass our oneWire reference to Dallas Temperature. 
 DallasTemperature sensors(&ds);
+int numberOfDevices; 
+boolean convInProgress;
+unsigned long lastTemp;
+
 #define MAX_DISTANCE 200 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
 NewPing sonar(triggerPin, echoPin, MAX_DISTANCE); // NewPing setup of pins and maximum distance.
 
@@ -63,9 +70,9 @@ boolean fansOn;
 boolean pumpOn;
 boolean readyToSend;
 int pumpState = 0;
-int it = 0; // iteration counter;
+unsigned long it = 0; // iteration counter;
 float workHours, fanHours, pumpHours; // work time (hours)
-unsigned long fanMillis, pumpMillis, workMillis, delta, lastTemp, lastDist, lastVolt;
+unsigned long fanMillis, pumpMillis, workMillis, delta, lastDist, lastVolt;
 int np = 0; /* poliv session number */
 float h; // distance from sonar to water surface, cm.
 float barrel_height;
@@ -111,6 +118,14 @@ void setup(void) {
   }
   EEPROM.get(eeAddress, settings);
   sensors.begin();
+  convInProgress = false;
+  lastTemp = 0;
+  numberOfDevices = sensors.getDeviceCount();
+  Serial.print("Locating devices...");
+  
+  Serial.print("Found ");
+  Serial.print(numberOfDevices, DEC);
+  Serial.println(" devices.");
 //  dht.attach(dhtPin);
   
   pinMode(fanPin, OUTPUT);
@@ -128,21 +143,16 @@ void setup(void) {
   Serial.print(sp->temp_pump);
   Serial.println("C");
 
+  delay(1000);
   gprs.powerUpDown();
-  // РїСЂРѕРІРµСЂСЏРµРј, РµСЃС‚СЊ Р»Рё СЃРІСЏР·СЊ СЃ GPRS-СѓСЃС‚СЂРѕР№СЃС‚РІРѕРј
   while (!gprs.init()) {
-    // РµСЃР»Рё СЃРІСЏР·Рё РЅРµС‚, Р¶РґС‘Рј 1 СЃРµРєСѓРЅРґСѓ
-    // Рё РІС‹РІРѕРґРёРј СЃРѕРѕР±С‰РµРЅРёРµ РѕР± РѕС€РёР±РєРµ;
-    // РїСЂРѕС†РµСЃСЃ РїРѕРІС‚РѕСЂСЏРµС‚СЃСЏ РІ С†РёРєР»Рµ,
-    // РїРѕРєР° РЅРµ РїРѕСЏРІРёС‚СЃСЏ РѕС‚РІРµС‚ РѕС‚ GPRS-СѓСЃС‚СЂРѕР№СЃС‚РІР°
     delay(1000);
-    Serial.print("Init error\r\n");
+    Serial.println(".");
   }
-  // РІС‹РІРѕРґРёРј СЃРѕРѕР±С‰РµРЅРёРµ РѕР± СѓРґР°С‡РЅРѕР№ РёРЅРёС†РёР°Р»РёР·Р°С†РёРё GPRS Shield
   Serial.println("GPRS initialized");
   
   workMillis = 0; // millis();
-  lastTemp = lastDist = lastVolt = lastAttempt = 0;
+  lastDist = lastVolt = lastAttempt = 0;
   
   readyToSend = true;
   h = 200.;
@@ -183,22 +193,33 @@ void loop(void) {
   /* 
    *  Measure temperature
    */
-  sensors.requestTemperatures();
-  temp = sensors.getTempCByIndex(0);
-  temperature.putValue(temp);  
-  ms = millis();
-  if (ms - lastTemp > 300) {
-    pp->temp1 = temperature.getAverage();
-    lastTemp = ms;
+  if(!convInProgress) { //launch temp converson
+    sensors.setWaitForConversion(false);  // makes it async
+    sensors.requestTemperatures();
+    sensors.setWaitForConversion(true);
+    lastTemp = millis();
+    convInProgress = true;   
   }
+  if(millis() - lastTemp > 750) { // data should be ready
+    pp->temp1 = sensors.getTempCByIndex(0);
+    if (numberOfDevices > 1) {
+      pp->temp2 = sensors.getTempCByIndex(1);
+    }
+    convInProgress = false;
+  } 
   
   /* 
    *  measure water volume
    */
+if (!DEBUG) {   
   uS = sonar.ping_median(7);
   if (uS > 0) {
     h = (float)uS / US_ROUNDTRIP_CM;
   }  
+} else { 
+  h = 2 + 10*pumpHours;
+}
+  
   h *= (1 + 0.5*(pp->temp1 - 20)/(pp->temp1 + 273)); // take temperature into account
   distance.putValue(h);
   ms = millis();
@@ -211,7 +232,7 @@ void loop(void) {
    *  Measure voltage
    */
   dividerValue = (float)analogRead(dividerPin);  
-  volt = 13.08/516* dividerValue;
+  volt = 13.06/883* dividerValue;
   voltage.putValue(volt);
   ms = millis();
   if (ms - lastVolt > 300) {
@@ -238,7 +259,7 @@ void loop(void) {
   /*
    * Translate BT input to serial
    */
-  if(mySerial.available() > 0) {
+  if(mySerial.available() > 0){
     c = mySerial.read();
     if (c == ';') {
       *bp = 0;
@@ -293,6 +314,7 @@ void loop(void) {
   if ((lastRingWritten == 0)||(millis() - lastRingWritten > 300000)) { // its time to write data into ring buffer
     wp->ts = ts + (millis() - lastTimeSet)/1000;
     wp->temp1 = pp->temp1;
+    wp->temp2 = pp->temp2;
     wp->volt = pp->volt;
     wp->vol = pp->vol;
     wp->dist = pp->dist;
@@ -375,8 +397,8 @@ float toVolume(float h) {
 }  
 
 void serial_output() {
-  Serial.print(" it=");
-  Serial.print(ts);
+  //Serial.print(" it=");
+  Serial.print(it);
   Serial.print(" T1=");
   Serial.print(pp->temp1);
   Serial.print("C val=");
@@ -396,11 +418,13 @@ boolean gprs_send()
 {
   String request = "GET /cgi-bin/parnik2_upd?ts="; 
   unsigned int len;
-return false;
+//return false;
   request += rp->ts;
   request += "&T=";
   request += rp->temp1;
-  request += ":U:U:U:U:";
+  request += ":";
+  request += rp->temp2;
+  request += ":U:U:U:";
   request += sp->temp_fans;
   request += ":";
   request += sp->temp_pump;
