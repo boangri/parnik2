@@ -17,7 +17,7 @@ Average voltage(N_AVG);
 Average distance(N_AVG);
 #include "parnik.h"
 
-const char version[] = "0.4.1"; 
+const char version[] = "0.4.2"; 
 
 #define TEMP_FANS 27  // temperature for fans switching on
 #define TEMP_PUMP 23 // temperature - do not pump water if cold enought
@@ -57,6 +57,9 @@ DallasTemperature sensors(&ds);
 int numberOfDevices; 
 boolean convInProgress;
 unsigned long lastTemp;
+
+unsigned long lastLed;
+boolean ledState;
 
 #define MAX_DISTANCE 200 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
 NewPing sonar(triggerPin, echoPin, MAX_DISTANCE); // NewPing setup of pins and maximum distance.
@@ -107,7 +110,7 @@ void setup(void) {
   byte b;
   //EEPROM[0] = 255;
   Serial.begin(9600);
-  while (!Serial) {}
+  //while (!Serial) {}
   mySerial.begin(9600);
   if (EEPROM.get(eeAddress, b) == 255) {
 //    Serial.println("Setting not set yet, use defaults");
@@ -170,6 +173,10 @@ void setup(void) {
   lastRingWritten = 0;
 
   bp = bt_buf;
+
+  pinMode(13, OUTPUT);
+  lastLed = millis();
+  ledState = false;
 }
 
 void loop(void) {
@@ -387,6 +394,19 @@ if (!DEBUG) {
       }
     }
   } 
+  /*
+   * Led 13 switching on and off - 
+   */
+   if (millis() - lastLed > 200) {
+      if (ledState) {
+        digitalWrite(13, LOW);
+        ledState = false;
+      } else {
+        digitalWrite(13, HIGH);
+        ledState = true;
+      }
+      lastLed = millis();
+   }
 }  
 
 /*

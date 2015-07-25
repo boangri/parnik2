@@ -1,5 +1,6 @@
 struct {
   float temp1;
+  float temp2;
   float temp_pump;
   float volt;
   float vol;
@@ -18,6 +19,7 @@ struct {
 struct {
   unsigned long ts;
   float temp1;
+  float temp2;
   float volt;
   float vol;
   float dist;
