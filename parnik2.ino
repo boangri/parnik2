@@ -17,12 +17,20 @@ Average voltage(N_AVG);
 Average distance(N_AVG);
 #include "parnik.h"
 
-const char version[] = "0.4.2"; 
+const char version[] = "0.4.3"; 
 
 #define TEMP_FANS 27  // temperature for fans switching on
 #define TEMP_PUMP 23 // temperature - do not pump water if cold enought
 #define BARREL_HEIGHT 74.0 // max distanse from sonar to water surface which 
 #define BARREL_DIAMETER 57.0 // 200L
+
+/* related to watering */
+#define WATER_MIN_VOLUME 0 // L, 
+#define WATER_MAX_VOLUME 20 // L
+#define WATER_PER_GRAD 1 // L per gradus
+#define WATER_MIN_TEMP 20 // gradus
+#define WATER_START 180 // minutes
+#define WATER_PERIOD 180 // minutes
 
 #define ON LOW
 #define OFF HIGH // if transistors 
@@ -108,7 +116,7 @@ char *bp;
 
 void setup(void) {
   byte b;
-  //EEPROM[0] = 255;
+  EEPROM[0] = 255;
   Serial.begin(9600);
   //while (!Serial) {}
   mySerial.begin(9600);
@@ -116,6 +124,14 @@ void setup(void) {
 //    Serial.println("Setting not set yet, use defaults");
     sp->temp_fans = TEMP_FANS;
     sp->temp_pump = TEMP_PUMP;
+    sp->barrel_diameter = BARREL_DIAMETER;
+    sp->barrel_height = BARREL_HEIGHT;
+    sp->water_min_volume = WATER_MIN_VOLUME;
+    sp->water_max_volume = WATER_MAX_VOLUME;
+    sp->water_per_grad = WATER_PER_GRAD;
+    sp->water_min_temp = WATER_MIN_TEMP;
+    sp->water_start = WATER_START;
+    sp->water_period = WATER_PERIOD;
     EEPROM.put(eeAddress, settings);
 //    Serial.println("Wrote defaults to EEPROM");
   }
@@ -397,7 +413,7 @@ if (!DEBUG) {
   /*
    * Led 13 switching on and off - 
    */
-   if (millis() - lastLed > 200) {
+   if (millis() - lastLed > 100) {
       if (ledState) {
         digitalWrite(13, LOW);
         ledState = false;
@@ -495,9 +511,10 @@ return false;
 }
 
 void bt_cmd(char *cmd) {
-  String s = String(cmd);
-  Serial.println(s);
-  if (s.indexOf("par=?") == 0) {
+  String c = String(cmd);
+  String s;
+  //Serial.println(s);
+  if (c.indexOf("par=?") == 0) {
     s = String("t1=");
     s += pp->temp1;
     s += ";vl=";
@@ -508,6 +525,25 @@ void bt_cmd(char *cmd) {
     s += pp->fans;
     s += ";p=";
     s += pp->pump;
+    s += ";";
+    mySerial.println(s);
+    mySerial.write((byte)0);
+  }
+  if (c.indexOf("set=?") == 0) {
+    s = String("tf=");
+    s += sp->temp_fans;
+    s += ";tp=";
+    s += sp->temp_pump;
+    s += ";bh=";
+    s += sp->barrel_height;
+    s += ";bd=";
+    s += sp->barrel_diameter;
+    s += ";wv=";
+    s += sp->water_per_grad;
+    s += ";ws=";
+    s += sp->water_start;
+    s += ";wp=";
+    s += sp->water_period;
     s += ";";
     mySerial.println(s);
     mySerial.write((byte)0);

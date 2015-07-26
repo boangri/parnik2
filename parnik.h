@@ -14,6 +14,12 @@ struct {
   float temp_pump;
   float barrel_diameter;
   float barrel_height;
+  float water_min_volume;
+  float water_max_volume;
+  float water_per_grad;
+  float water_min_temp;
+  float water_start;
+  float water_period;
 } typedef Settings;
 
 struct {
