@@ -17,7 +17,7 @@ Average voltage(N_AVG);
 Average distance(N_AVG);
 #include "parnik.h"
 
-const char version[] = "0.5.0"; 
+const char version[] = "0.5.1"; 
 
 #define TEMP_FANS 27  // temperature for fans switching on
 #define TEMP_PUMP 23 // temperature - do not pump water if cold enought
@@ -116,7 +116,7 @@ char *bp;
 
 void setup(void) {
   byte b;
-  EEPROM[0] = 255;
+  //EEPROM[0] = 255;
   Serial.begin(9600);
   //while (!Serial) {}
   mySerial.begin(9600);
@@ -512,8 +512,8 @@ return false;
 
 void bt_cmd(char *cmd) {
   String c = String(cmd);
-  String s;
-  //Serial.println(s);
+  String s, q;
+
   if (c.indexOf("par=?") == 0) {
     s = String("t1=");
     s += pp->temp1;
@@ -555,5 +555,28 @@ void bt_cmd(char *cmd) {
     mySerial.write((byte)0);
     return;
   }
+  /*
+   * set parameters
+   */
+  if (c.indexOf("set=") == 0) {
+    int i;
+    
+    s = c.substring(4);
+    while ((i = s.indexOf(':')) > 0) {
+      q = s.substring(0,i);
+      if (q.startsWith("bh=")) {
+        sp->barrel_height = (float)(q.substring(3).toInt());
+      }
+      if (q.startsWith("bd=")) {
+        sp->barrel_diameter = (float)(q.substring(3).toInt());
+      }      
+      s = s.substring(i+1);
+    }
+    EEPROM.put(eeAddress, settings);
+    mySerial.println("ok");
+    mySerial.write((byte)0);
+    return;
+  }
+  
 }
 
