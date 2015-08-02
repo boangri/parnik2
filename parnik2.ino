@@ -17,7 +17,7 @@ Average voltage(N_AVG);
 Average distance(N_AVG);
 #include "parnik.h"
 
-const char version[] = "0.4.3"; 
+const char version[] = "0.5.0"; 
 
 #define TEMP_FANS 27  // temperature for fans switching on
 #define TEMP_PUMP 23 // temperature - do not pump water if cold enought
@@ -528,6 +528,7 @@ void bt_cmd(char *cmd) {
     s += ";";
     mySerial.println(s);
     mySerial.write((byte)0);
+    return;
   }
   if (c.indexOf("set=?") == 0) {
     s = String("tf=");
@@ -547,6 +548,12 @@ void bt_cmd(char *cmd) {
     s += ";";
     mySerial.println(s);
     mySerial.write((byte)0);
+    return;
+  }
+  if (c.indexOf("ver=?") == 0) {
+    mySerial.println(version);
+    mySerial.write((byte)0);
+    return;
   }
 }
 
