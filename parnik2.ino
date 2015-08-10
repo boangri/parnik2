@@ -17,7 +17,7 @@ Average voltage(N_AVG);
 Average distance(N_AVG);
 #include "parnik.h"
 
-const char version[] = "0.5.1"; 
+const char version[] = "0.5.3"; 
 
 #define TEMP_FANS 27  // temperature for fans switching on
 #define TEMP_PUMP 23 // temperature - do not pump water if cold enought
@@ -27,7 +27,7 @@ const char version[] = "0.5.1";
 /* related to watering */
 #define WATER_MIN_VOLUME 0 // L, 
 #define WATER_MAX_VOLUME 20 // L
-#define WATER_PER_GRAD 1 // L per gradus
+#define WATER_PER_GRAD 1.0 // L per gradus
 #define WATER_MIN_TEMP 20 // gradus
 #define WATER_START 180 // minutes
 #define WATER_PERIOD 180 // minutes
@@ -98,6 +98,8 @@ Parnik parnik;
 Parnik *pp = &parnik;
 Settings settings;
 Settings *sp = &settings;
+Ident ident;
+Ident *idp = &ident;
 
 // Data Ring Buffer
 #define N_RING 1
@@ -108,7 +110,7 @@ unsigned long lastRingWritten; //ms
 unsigned long lastAttempt; // ms - last attempt to send data over GPRS
 
 // EEPROM
-int eeAddress = 0;
+int eeAddress = sizeof(ident);
 
 // Bluetooth 
 char bt_buf[80];
@@ -135,6 +137,7 @@ void setup(void) {
     EEPROM.put(eeAddress, settings);
 //    Serial.println("Wrote defaults to EEPROM");
   }
+  EEPROM.get(0, ident);
   EEPROM.get(eeAddress, settings);
   sensors.begin();
   convInProgress = false;
@@ -539,8 +542,12 @@ void bt_cmd(char *cmd) {
     s += sp->barrel_height;
     s += ";bd=";
     s += sp->barrel_diameter;
-    s += ";wv=";
+    s += ";wg=";
     s += sp->water_per_grad;
+    s += ";wn=";
+    s += sp->water_min_volume;
+    s += ";wx=";
+    s += sp->water_max_volume;   
     s += ";ws=";
     s += sp->water_start;
     s += ";wp=";
@@ -552,6 +559,11 @@ void bt_cmd(char *cmd) {
   }
   if (c.indexOf("ver=?") == 0) {
     mySerial.println(version);
+    mySerial.write((byte)0);
+    return;
+  }
+  if (c.indexOf("id=?") == 0) {
+    mySerial.println(idp->id);
     mySerial.write((byte)0);
     return;
   }

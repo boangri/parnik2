@@ -33,4 +33,8 @@ struct {
   int pump;
 } typedef Packet;
 
+struct {
+  unsigned long id; //unique device ID
+  char secret[8]; // secret
+} typedef Ident;
 
