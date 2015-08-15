@@ -10,16 +10,16 @@ struct {
 } typedef Parnik;
 
 struct {
-  float temp_fans;
-  float temp_pump;
-  float barrel_diameter;
-  float barrel_height;
-  float water_min_volume;
-  float water_max_volume;
-  float water_per_grad;
-  float water_min_temp;
-  float water_start;
-  float water_period;
+  float temp_fans;          // tf
+  float temp_pump;          // tp 
+  float barrel_diameter;    // bd
+  float barrel_height;      // bh
+  float water_min_volume;   // wn
+  float water_max_volume;   // wx
+  float water_per_grad;     // wg
+  float water_min_temp;     // tw
+  float water_start;        // ws
+  float water_period;       // wp
 } typedef Settings;
 
 struct {

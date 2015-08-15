@@ -17,7 +17,7 @@ Average voltage(N_AVG);
 Average distance(N_AVG);
 #include "parnik.h"
 
-const char version[] = "0.5.3"; 
+const char version[] = "0.5.4"; 
 
 #define TEMP_FANS 27  // temperature for fans switching on
 #define TEMP_PUMP 23 // temperature - do not pump water if cold enought
@@ -122,8 +122,19 @@ void setup(void) {
   Serial.begin(9600);
   //while (!Serial) {}
   mySerial.begin(9600);
-  if (EEPROM.get(eeAddress, b) == 255) {
-//    Serial.println("Setting not set yet, use defaults");
+  EEPROM.get(0, b);
+  if ( b == 255) {
+    idp->id = 1000001;
+    idp->secret[0] = 's';
+    idp->secret[1] = 'e';
+    idp->secret[2] = 'c';
+    idp->secret[3] = 'r';
+    idp->secret[4] = 'e';
+    idp->secret[5] = 't';
+    idp->secret[6] = '5';
+    idp->secret[7] = '6';
+    EEPROM.put(0, ident);
+    Serial.println("Setting not set yet, use defaults");
     sp->temp_fans = TEMP_FANS;
     sp->temp_pump = TEMP_PUMP;
     sp->barrel_diameter = BARREL_DIAMETER;
@@ -538,6 +549,8 @@ void bt_cmd(char *cmd) {
     s += sp->temp_fans;
     s += ";tp=";
     s += sp->temp_pump;
+    s += ";tw=";
+    s += sp->water_min_temp;
     s += ";bh=";
     s += sp->barrel_height;
     s += ";bd=";
@@ -581,11 +594,35 @@ void bt_cmd(char *cmd) {
       }
       if (q.startsWith("bd=")) {
         sp->barrel_diameter = (float)(q.substring(3).toInt());
+      }  
+      if (q.startsWith("tf=")) {
+        sp->temp_fans = (float)(q.substring(3).toInt());
+      }  
+      if (q.startsWith("tp=")) {
+        sp->temp_pump = (float)(q.substring(3).toInt());
+      }  
+      if (q.startsWith("tw=")) {
+        sp->water_min_temp = (float)(q.substring(3).toInt());
+      }  
+      if (q.startsWith("ws=")) {
+        sp->water_start = (float)(q.substring(3).toInt());
+      }  
+      if (q.startsWith("wp=")) {
+        sp->water_period = (float)(q.substring(3).toInt());
+      }  
+      if (q.startsWith("wn=")) {
+        sp->water_min_volume = (float)(q.substring(3).toInt());
+      }  
+      if (q.startsWith("wx=")) {
+        sp->water_max_volume = (float)(q.substring(3).toInt());
+      }  
+      if (q.startsWith("wg=")) {
+        sp->water_per_grad = (float)(q.substring(3).toInt());
       }      
       s = s.substring(i+1);
     }
     EEPROM.put(eeAddress, settings);
-    mySerial.println("ok");
+    mySerial.print("ok");
     mySerial.write((byte)0);
     return;
   }
