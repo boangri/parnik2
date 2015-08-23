@@ -17,7 +17,7 @@ Average voltage(N_AVG);
 Average distance(N_AVG);
 #include "parnik.h"
 
-const char version[] = "0.5.4"; 
+const char version[] = "0.6.1"; 
 
 #define TEMP_FANS 27  // temperature for fans switching on
 #define TEMP_PUMP 23 // temperature - do not pump water if cold enought
@@ -82,8 +82,8 @@ boolean pumpOn;
 boolean readyToSend;
 int pumpState = 0;
 unsigned long it = 0; // iteration counter;
-float workHours, fanHours, pumpHours; // work time (hours)
-unsigned long fanMillis, pumpMillis, workMillis, delta, lastDist, lastVolt;
+//float workHours, fanHours, pumpHours; // work time (hours)
+unsigned long delta, lastDist, lastVolt;
 int np = 0; /* poliv session number */
 float h; // distance from sonar to water surface, cm.
 float barrel_height;
@@ -166,9 +166,9 @@ void setup(void) {
   digitalWrite(fanPin, OFF);
   digitalWrite(pumpPin, OFF);
   fansOn = false; 
-  fanMillis = 0;
+  //fanMillis = 0;
   pumpOn = false;
-  pumpMillis = 0; 
+  //pumpMillis = 0; 
   Serial.println(version);
   Serial.print("Settings: temp_fans=");
   Serial.print(sp->temp_fans);
@@ -185,8 +185,11 @@ void setup(void) {
   Serial.println("GPRS initialized");
   */
   
-  workMillis = 0; // millis();
+  //workMillis = 0; // millis();
   lastDist = lastVolt = lastAttempt = 0;
+  pp->timeWork = 0;
+  pp->timeFans = 0;
+  pp->timePump = 0;
   
   readyToSend = true;
   h = 200.;
@@ -216,17 +219,17 @@ void loop(void) {
   
   it++;
   // Timing
-  delta = millis() - workMillis;
-  workMillis += delta;
+  delta = millis() - pp->timeWork;
+  pp->timeWork += delta;
   if (fansOn) {
-    fanMillis += delta;
+    pp->timeFans += delta;
   }
   if (pumpOn) {
-    pumpMillis += delta;
+    pp->timePump += delta;
   }
-  workHours = (float)workMillis/3600000.; // Hours;
-  fanHours = (float)fanMillis/3600000.;
-  pumpHours = (float)pumpMillis/3600000.;
+  //workHours = (float)workMillis/3600000.; // Hours;
+  //fanHours = (float)fanMillis/3600000.;
+  //pumpHours = (float)pumpMillis/3600000.;
 
   /* 
    *  Measure temperature
@@ -255,7 +258,7 @@ if (!DEBUG) {
     h = (float)uS / US_ROUNDTRIP_CM;
   }  
 } else { 
-  h = 2 + 10*pumpHours;
+  h = 2 + pp->timePump/360000;
 }
   
   h *= (1 + 0.5*(pp->temp1 - 20)/(pp->temp1 + 273)); // take temperature into account
@@ -338,7 +341,7 @@ if (!DEBUG) {
        pp->pump = 0;   
      } 
   } else {
-     if (workHours >= Tpoliv*np) {       
+     if (pp->timeWork/3600000 >= Tpoliv*np) {       
        np++;  
        // Switch on the pump only if warm enought and there is water in the barrel     
        if ((pp->temp1 > sp->temp_pump) && (pp->vol > 0.)) {
@@ -577,6 +580,21 @@ void bt_cmd(char *cmd) {
   }
   if (c.indexOf("id=?") == 0) {
     mySerial.println(idp->id);
+    mySerial.write((byte)0);
+    return;
+  }
+  /*
+   * Read statistics
+   */
+  if (c.indexOf("sta=?") == 0) {
+    s = String("sw=");
+    s += pp->timeWork/1000;
+    s += ";sf=";
+    s += pp->timeFans/1000;
+    s += ";sp=";
+    s += pp->timePump/1000;
+    s += ";";
+    mySerial.println(s);
     mySerial.write((byte)0);
     return;
   }

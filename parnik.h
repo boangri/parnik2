@@ -7,6 +7,9 @@ struct {
   float dist;
   int fans;
   int pump;
+  unsigned long timeWork;
+  unsigned long timeFans;
+  unsigned long timePump;
 } typedef Parnik;
 
 struct {
