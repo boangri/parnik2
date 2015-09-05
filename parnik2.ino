@@ -4,12 +4,11 @@
 #include <EEPROM.h>
 #include <SoftwareSerial.h>
 #include <Average.h>
-#include <dht.h>
+//#include <dht.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include <NewPing.h>
 
-#define USE_GPRS false
 #define DEBUG true
 
 Average voltage(N_AVG);
@@ -17,7 +16,7 @@ Average voltage(N_AVG);
 Average distance(N_AVG);
 #include "parnik.h"
 
-const char version[] = "0.6.1"; 
+const char version[] = "0.7.1"; 
 
 #define TEMP_FANS 27  // temperature for fans switching on
 #define TEMP_PUMP 23 // temperature - do not pump water if cold enought
@@ -48,12 +47,11 @@ const int pumpPin = 12;
 const float Vpoliv = 1.0; // Liters per centigrade above TEMP_PUMP 
 const float Tpoliv = 4; // Watering every 4 hours
 
-const char apn[] = "internet.mts.ru"; 
-const char user[] = "mts";
-const char pass[] = "mts";
-const char host[] = "www.xland.ru";
-//char req[] = "GET /cgi-bin/parnik2_upd?ts=1436946564&T=17.25:U:U:U:26:27:U&M=00:00&P=11.7:U&V=173.61:5.92 HTTP/1.0\r\n\r\n";
-char buf[120];
+char apn[] = "internet.mts.ru"; 
+char user[] = "mts";
+char pass[] = "mts";
+char host[] = "www.xland.ru";
+char buf[220];
 GPRS gprs(9600);
 
 SoftwareSerial mySerial(rxPin, txPin); // RX, TX 
@@ -65,7 +63,7 @@ DallasTemperature sensors(&ds);
 int numberOfDevices; 
 boolean convInProgress;
 unsigned long lastTemp;
-
+boolean useGPRS;
 unsigned long lastLed;
 boolean ledState;
 
@@ -134,7 +132,7 @@ void setup(void) {
     idp->secret[6] = '5';
     idp->secret[7] = '6';
     EEPROM.put(0, ident);
-    Serial.println("Setting not set yet, use defaults");
+    //Serial.println("Setting not set yet, use defaults");
     sp->temp_fans = TEMP_FANS;
     sp->temp_pump = TEMP_PUMP;
     sp->barrel_diameter = BARREL_DIAMETER;
@@ -154,9 +152,9 @@ void setup(void) {
   convInProgress = false;
   lastTemp = 0;
   numberOfDevices = sensors.getDeviceCount();
-  Serial.print("Locating devices...");
+  //Serial.print("Locating devices...");
   
-  Serial.print("Found ");
+  //Serial.print("Found ");
   Serial.print(numberOfDevices, DEC);
   Serial.println(" devices.");
 //  dht.attach(dhtPin);
@@ -170,20 +168,28 @@ void setup(void) {
   pumpOn = false;
   //pumpMillis = 0; 
   Serial.println(version);
-  Serial.print("Settings: temp_fans=");
+  //Serial.print("Settings: temp_fans=");
   Serial.print(sp->temp_fans);
-  Serial.print("C temp_pump=");
+  //Serial.print("C temp_pump=");
   Serial.print(sp->temp_pump);
   Serial.println("C");
-/*
+
   delay(1000);
+  useGPRS = false;
   gprs.powerUpDown();
-  while (!gprs.init()) {
+  for (int i = 0; i < 10; i++) {
+    if (gprs.init()) {
+      useGPRS = true;
+      break;
+    }
     delay(1000);
-    Serial.println(".");
+    Serial.print(".");
   }
-  Serial.println("GPRS initialized");
-  */
+  if (useGPRS) {
+    //Serial.println("\nGPRS shield initialized");
+  } else {
+    //Serial.println("\nGPRS could not be initialized");
+  }
   
   //workMillis = 0; // millis();
   lastDist = lastVolt = lastAttempt = 0;
@@ -227,9 +233,6 @@ void loop(void) {
   if (pumpOn) {
     pp->timePump += delta;
   }
-  //workHours = (float)workMillis/3600000.; // Hours;
-  //fanHours = (float)fanMillis/3600000.;
-  //pumpHours = (float)pumpMillis/3600000.;
 
   /* 
    *  Measure temperature
@@ -455,15 +458,13 @@ void serial_output() {
   Serial.print(it);
   Serial.print(" T1=");
   Serial.print(pp->temp1);
-  Serial.print("C val=");
-  Serial.print(dividerValue);
   Serial.print(" U=");
   Serial.print(volt);
-  Serial.print(" Uavg=");
+  Serial.print(" Ua=");
   Serial.print(pp->volt);
   Serial.print(" H: ");
   Serial.print(h);
-  Serial.print(" cm. Volume: ");
+  Serial.print(" cm. Vol: ");
   Serial.print(pp->vol);
   Serial.println(" L.");
 }
@@ -472,7 +473,7 @@ boolean gprs_send()
 {
   String request = "GET /cgi-bin/parnik2_upd?ts="; 
   unsigned int len;
-return false;
+  if (!useGPRS) return false;
   request += rp->ts;
   request += "&T=";
   request += rp->temp1;
@@ -499,24 +500,23 @@ return false;
   request.toCharArray(buf, len);
 
   if (gprs.join(apn, user, pass)) {
-    Serial.println("s join");
+    //Serial.println("joined");
     if (gprs.connect (TCP, host, 80, 100)) {
-      Serial.println("Con!"); 
+      //Serial.println("Connected"); 
       gprs.send(buf, len);
-      Serial.println("Sent: ");
-      Serial.println(buf);
-      Serial.print("req len=");
-      Serial.println(len);
-      Serial.println("Wait");
+      //Serial.println(buf);
+      //Serial.print("req len=");
+      //Serial.println(len);
+      //Serial.println("Wait");
       len = gprs.recv(buf, sizeof(buf)); 
       buf[len+1] = 0;
       //Serial.println("Rcv ");    
       //Serial.println(buf);
-      Serial.print("len=");
-      Serial.println(len);
+      //Serial.print("len=");
+      //Serial.println(len);
     } else {
       gprs.close();
-      Serial.println("f conn");
+      Serial.println("con f");
       return false;
     }  
     gprs.close();
