@@ -16,7 +16,7 @@ Average voltage(N_AVG);
 Average distance(N_AVG);
 #include "parnik.h"
 
-const char version[] = "0.7.1"; 
+const char version[] = "0.7.2 production"; 
 
 #define TEMP_FANS 27  // temperature for fans switching on
 #define TEMP_PUMP 23 // temperature - do not pump water if cold enought
@@ -122,7 +122,7 @@ void setup(void) {
   mySerial.begin(9600);
   EEPROM.get(0, b);
   if ( b == 255) {
-    idp->id = 1000001;
+    idp->id = 100001;
     idp->secret[0] = 's';
     idp->secret[1] = 'e';
     idp->secret[2] = 'c';
@@ -186,7 +186,7 @@ void setup(void) {
     Serial.print(".");
   }
   if (useGPRS) {
-    //Serial.println("\nGPRS shield initialized");
+    Serial.println("\nGPRS shield initialized");
   } else {
     //Serial.println("\nGPRS could not be initialized");
   }
@@ -500,17 +500,17 @@ boolean gprs_send()
   request.toCharArray(buf, len);
 
   if (gprs.join(apn, user, pass)) {
-    //Serial.println("joined");
+    Serial.println("joined");
     if (gprs.connect (TCP, host, 80, 100)) {
-      //Serial.println("Connected"); 
+      Serial.println("Connected"); 
       gprs.send(buf, len);
-      //Serial.println(buf);
+      Serial.println(buf);
       //Serial.print("req len=");
       //Serial.println(len);
       //Serial.println("Wait");
       len = gprs.recv(buf, sizeof(buf)); 
       buf[len+1] = 0;
-      //Serial.println("Rcv ");    
+      Serial.println("Rcv ");    
       //Serial.println(buf);
       //Serial.print("len=");
       //Serial.println(len);
