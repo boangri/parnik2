@@ -16,7 +16,7 @@ Average voltage(N_AVG);
 Average distance(N_AVG);
 #include "parnik.h"
 
-const char version[] = "0.7.1"; 
+const char version[] = "0.8.1"; 
 
 #define TEMP_FANS 27  // temperature for fans switching on
 #define TEMP_PUMP 23 // temperature - do not pump water if cold enought
@@ -38,8 +38,8 @@ const int tempPin = A0;
 const int echoPin = A1;
 //const int dhtPin = A2;
 const int dividerPin = A5;
-const int rxPin = 8; // connect to BT HC-05 TX pin
-const int txPin = 9; // connect to BT HC-05 RX pin
+const int rxPin = 6; // connect to BT HC-05 TX pin
+const int txPin = 7; // connect to BT HC-05 RX pin
 const int triggerPin = 10;
 const int fanPin = 11;
 const int pumpPin = 12;
