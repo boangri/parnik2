@@ -38,8 +38,8 @@ const int tempPin = A0;
 const int echoPin = A1;
 //const int dhtPin = A2;
 const int dividerPin = A5;
-const int rxPin = 6; // connect to BT HC-05 TX pin
-const int txPin = 7; // connect to BT HC-05 RX pin
+//const int rxPin = 6; // connect to BT HC-05 TX pin
+//const int txPin = 7; // connect to BT HC-05 RX pin
 const int triggerPin = 10;
 const int fanPin = 11;
 const int pumpPin = 12;
@@ -54,7 +54,7 @@ char host[] = "www.xland.ru";
 char buf[220];
 GPRS gprs(9600);
 
-SoftwareSerial mySerial(rxPin, txPin); // RX, TX 
+//SoftwareSerial mySerial(rxPin, txPin); // RX, TX 
 //DHT dht = DHT();
 // DS18S20 Temperature chip i/o
 OneWire ds(tempPin);  // on pin 10
@@ -116,35 +116,12 @@ char *bp;
 
 void setup(void) {
   byte b;
-  //EEPROM[0] = 255;
   Serial.begin(9600);
   //while (!Serial) {}
-  mySerial.begin(9600);
+  Serial2.begin(9600);
   EEPROM.get(0, b);
   if ( b == 255) {
-    idp->id = 1000001;
-    idp->secret[0] = 's';
-    idp->secret[1] = 'e';
-    idp->secret[2] = 'c';
-    idp->secret[3] = 'r';
-    idp->secret[4] = 'e';
-    idp->secret[5] = 't';
-    idp->secret[6] = '5';
-    idp->secret[7] = '6';
-    EEPROM.put(0, ident);
-    //Serial.println("Setting not set yet, use defaults");
-    sp->temp_fans = TEMP_FANS;
-    sp->temp_pump = TEMP_PUMP;
-    sp->barrel_diameter = BARREL_DIAMETER;
-    sp->barrel_height = BARREL_HEIGHT;
-    sp->water_min_volume = WATER_MIN_VOLUME;
-    sp->water_max_volume = WATER_MAX_VOLUME;
-    sp->water_per_grad = WATER_PER_GRAD;
-    sp->water_min_temp = WATER_MIN_TEMP;
-    sp->water_start = WATER_START;
-    sp->water_period = WATER_PERIOD;
-    EEPROM.put(eeAddress, settings);
-//    Serial.println("Wrote defaults to EEPROM");
+    Serial.println("EEPROM not initialized!!!");
   }
   EEPROM.get(0, ident);
   EEPROM.get(eeAddress, settings);
@@ -152,9 +129,9 @@ void setup(void) {
   convInProgress = false;
   lastTemp = 0;
   numberOfDevices = sensors.getDeviceCount();
-  //Serial.print("Locating devices...");
+  Serial.print("Locating devices...");
   
-  //Serial.print("Found ");
+  Serial.print("Found ");
   Serial.print(numberOfDevices, DEC);
   Serial.println(" devices.");
 //  dht.attach(dhtPin);
@@ -186,9 +163,9 @@ void setup(void) {
     Serial.print(".");
   }
   if (useGPRS) {
-    //Serial.println("\nGPRS shield initialized");
+    Serial.println("\nGPRS shield initialized");
   } else {
-    //Serial.println("\nGPRS could not be initialized");
+    Serial.println("\nGPRS could not be initialized");
   }
   
   //workMillis = 0; // millis();
@@ -296,15 +273,15 @@ if (!DEBUG) {
    /*
   if(Serial.available() > 0) {
     c = Serial.read();
-    mySerial.print((char)c);
-    mySerial.flush();
+    Serial2.print((char)c);
+    Serial2.flush();
   }
   */
   /*
    * Translate BT input to serial
    */
-  if(mySerial.available() > 0){
-    c = mySerial.read();
+  if(Serial2.available() > 0){
+    c = Serial2.read();
     if (c == ';') {
       *bp = 0;
       bp = bt_buf;
@@ -543,8 +520,8 @@ void bt_cmd(char *cmd) {
     s += ";p=";
     s += pp->pump;
     s += ";";
-    mySerial.println(s);
-    mySerial.write((byte)0);
+    Serial2.println(s);
+    Serial2.write((byte)0);
     return;
   }
   if (c.indexOf("set=?") == 0) {
@@ -569,18 +546,18 @@ void bt_cmd(char *cmd) {
     s += ";wp=";
     s += sp->water_period;
     s += ";";
-    mySerial.println(s);
-    mySerial.write((byte)0);
+    Serial2.println(s);
+    Serial2.write((byte)0);
     return;
   }
   if (c.indexOf("ver=?") == 0) {
-    mySerial.println(version);
-    mySerial.write((byte)0);
+    Serial2.println(version);
+    Serial2.write((byte)0);
     return;
   }
   if (c.indexOf("id=?") == 0) {
-    mySerial.println(idp->id);
-    mySerial.write((byte)0);
+    Serial2.println(idp->id);
+    Serial2.write((byte)0);
     return;
   }
   /*
@@ -594,8 +571,8 @@ void bt_cmd(char *cmd) {
     s += ";sp=";
     s += pp->timePump/1000;
     s += ";";
-    mySerial.println(s);
-    mySerial.write((byte)0);
+    Serial2.println(s);
+    Serial2.write((byte)0);
     return;
   }
   /*
@@ -640,8 +617,8 @@ void bt_cmd(char *cmd) {
       s = s.substring(i+1);
     }
     EEPROM.put(eeAddress, settings);
-    mySerial.print("ok");
-    mySerial.write((byte)0);
+    Serial2.print("ok");
+    Serial2.write((byte)0);
     return;
   }
   
