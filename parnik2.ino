@@ -52,7 +52,7 @@ char user[] = "mts";
 char pass[] = "mts";
 char host[] = "www.xland.ru";
 char buf[220];
-GPRS gprs(9600);
+GPRS gprs(4800);
 
 //SoftwareSerial mySerial(rxPin, txPin); // RX, TX 
 //DHT dht = DHT();
@@ -149,15 +149,14 @@ void setup(void) {
 
 
   useGPRS = false;
-//  gprs.powerUpDown();
-//  for (int i = 0; i < 10; i++) {
-//    if (gprs.init()) {
-//      useGPRS = true;
-//      break;
-//    }
-//    delay(1000);
-//    Serial.print(".");
-//  }
+  gprs.powerUpDown();
+  for (int i = 0; i < 5; i++) {
+    if (gprs.init()) {
+      useGPRS = true;
+      break;
+    }
+    delay(1000);
+  }
   if (useGPRS) {
     Serial.println("\nGPRS shield initialized");
   } else {
@@ -174,8 +173,8 @@ void setup(void) {
   h = 200.;
   it = 0;
   np = 0;
-  barrel_height = BARREL_HEIGHT;
-  barrel_volume = BARREL_DIAMETER*BARREL_DIAMETER*3.14/4000*BARREL_HEIGHT;
+  barrel_height = sp->barrel_height;
+  barrel_volume = sp->barrel_diameter*sp->barrel_diameter*3.14/4000*sp->barrel_height;
   // Time service
   ts = 1300000000; // time is unknown yet;
   lastTimeSet = 0; // means never
