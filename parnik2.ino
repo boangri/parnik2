@@ -16,7 +16,7 @@ Average voltage(N_AVG);
 Average distance(N_AVG);
 #include "parnik.h"
 
-const char version[] = "0.8.1"; 
+const char version[] = "0.9.1 no GPRS"; // split code
 
 #define TEMP_FANS 27  // temperature for fans switching on
 #define TEMP_PUMP 23 // temperature - do not pump water if cold enought
@@ -121,7 +121,7 @@ void setup(void) {
   Serial2.begin(9600);
   EEPROM.get(0, b);
   if ( b == 255) {
-    Serial.println("EEPROM not initialized!!!");
+    Serial.println("Not Initialized");
   }
   EEPROM.get(0, ident);
   EEPROM.get(eeAddress, settings);
@@ -153,15 +153,15 @@ void setup(void) {
 
   delay(1000);
   useGPRS = false;
-  gprs.powerUpDown();
-  for (int i = 0; i < 10; i++) {
-    if (gprs.init()) {
-      useGPRS = true;
-      break;
-    }
-    delay(1000);
-    Serial.print(".");
-  }
+//  gprs.powerUpDown();
+//  for (int i = 0; i < 10; i++) {
+//    if (gprs.init()) {
+//      useGPRS = true;
+//      break;
+//    }
+//    delay(1000);
+//    Serial.print(".");
+//  }
   if (useGPRS) {
     Serial.println("\nGPRS shield initialized");
   } else {
@@ -360,53 +360,53 @@ if (!DEBUG) {
   /*
    * Send data with GPRS
    */
-  if ((n_ring > 0) && (millis() - lastAttempt > 30000)) {  
-    lastAttempt = millis();
-    if(gprs_send()) {
-      String response;
-      unsigned long n;
-      int i;
-      
-      Serial.println("sent!");
-      response = String(buf);
-      Serial.println(response);
-      if ((response.indexOf("200 OK") == 9)&&(response.indexOf("success") > 9)) { // sent successfully
-        Serial.println("suc");     
-        response = response.substring(response.indexOf("ts=")+3);
-        n = response.toInt();
-        if ((ts < 1400000000) && (n > 1400000000)) {
-          ts = n;
-          lastTimeSet = millis();
-        }
-        if ((i = response.indexOf("tf=")) > 0) {
-          response = response.substring(i+3);
-          n = response.toInt();
-          if ((n > 0) && (n < 999)) {
-            sp->temp_fans = ((float)n)/10. -30.;
-            EEPROM.put(eeAddress, settings);
-            Serial.print("s tf=");
-            Serial.println(sp->temp_fans);
-          }
-        }
-        if ((i = response.indexOf("tp=")) > 0) {
-          response = response.substring(i+3);
-          n = response.toInt();
-          if ((n > 0) && (n < 999)) {
-            sp->temp_pump = ((float)n)/10. -30.;
-            EEPROM.put(eeAddress, settings);
-            Serial.print("s tp=");
-            Serial.println(sp->temp_pump);
-          }
-        }
-        n_ring--;
-        rp++;
-        if (++ir == N_RING) {
-          ir = 0;
-          rp = pack;
-        }
-      }
-    }
-  } 
+//  if ((n_ring > 0) && (millis() - lastAttempt > 30000)) {  
+//    lastAttempt = millis();
+//    if(gprs_send()) {
+//      String response;
+//      unsigned long n;
+//      int i;
+//      
+//      Serial.println("sent!");
+//      response = String(buf);
+//      Serial.println(response);
+//      if ((response.indexOf("200 OK") == 9)&&(response.indexOf("success") > 9)) { // sent successfully
+//        Serial.println("suc");     
+//        response = response.substring(response.indexOf("ts=")+3);
+//        n = response.toInt();
+//        if ((ts < 1400000000) && (n > 1400000000)) {
+//          ts = n;
+//          lastTimeSet = millis();
+//        }
+//        if ((i = response.indexOf("tf=")) > 0) {
+//          response = response.substring(i+3);
+//          n = response.toInt();
+//          if ((n > 0) && (n < 999)) {
+//            sp->temp_fans = ((float)n)/10. -30.;
+//            EEPROM.put(eeAddress, settings);
+//            Serial.print("s tf=");
+//            Serial.println(sp->temp_fans);
+//          }
+//        }
+//        if ((i = response.indexOf("tp=")) > 0) {
+//          response = response.substring(i+3);
+//          n = response.toInt();
+//          if ((n > 0) && (n < 999)) {
+//            sp->temp_pump = ((float)n)/10. -30.;
+//            EEPROM.put(eeAddress, settings);
+//            Serial.print("s tp=");
+//            Serial.println(sp->temp_pump);
+//          }
+//        }
+//        n_ring--;
+//        rp++;
+//        if (++ir == N_RING) {
+//          ir = 0;
+//          rp = pack;
+//        }
+//      }
+//    }
+//  } 
   /*
    * Led 13 switching on and off - 
    */
@@ -446,181 +446,4 @@ void serial_output() {
   Serial.println(" L.");
 }
 
-boolean gprs_send() 
-{
-  String request = "GET /cgi-bin/parnik2_upd?ts="; 
-  unsigned int len;
-  if (!useGPRS) return false;
-  request += rp->ts;
-  request += "&T=";
-  request += rp->temp1;
-  request += ":";
-  request += rp->temp2;
-  request += ":U:U:U:";
-  request += sp->temp_fans;
-  request += ":";
-  request += sp->temp_pump;
-  request += "&M=";
-  request += rp->fans;
-  request += ":";
-  request += rp->pump;
-  request += "&P=";
-  request += rp->volt;
-  request += ":U&V=";
-  request += rp->vol;
-  request += ":";
-  request += rp->dist;
-  request += " HTTP/1.0\r\n\r\n";
-
-  //char req[] = "GET /cgi-bin/parnik_upd2?ts=1435608900&T=17.25:U:U:U:26:27:U&M=00:00&P=11.7:U&V=173.61:5.92 HTTP/1.0\r\n\r\n";
-  len = request.length()+1;
-  request.toCharArray(buf, len);
-
-  if (gprs.join(apn, user, pass)) {
-    //Serial.println("joined");
-    if (gprs.connect (TCP, host, 80, 100)) {
-      //Serial.println("Connected"); 
-      gprs.send(buf, len);
-      //Serial.println(buf);
-      //Serial.print("req len=");
-      //Serial.println(len);
-      //Serial.println("Wait");
-      len = gprs.recv(buf, sizeof(buf)); 
-      buf[len+1] = 0;
-      //Serial.println("Rcv ");    
-      //Serial.println(buf);
-      //Serial.print("len=");
-      //Serial.println(len);
-    } else {
-      gprs.close();
-      Serial.println("con f");
-      return false;
-    }  
-    gprs.close();
-    return true;
-  } else {
-    Serial.println("f join");
-    return false;
-  }
-}
-
-void bt_cmd(char *cmd) {
-  String c = String(cmd);
-  String s, q;
-
-  if (c.indexOf("par=?") == 0) {
-    s = String("t1=");
-    s += pp->temp1;
-    s += ";vl=";
-    s += pp->vol;
-    s += ";vt=";
-    s += pp->volt;
-    s += ";f=";
-    s += pp->fans;
-    s += ";p=";
-    s += pp->pump;
-    s += ";";
-    Serial2.println(s);
-    Serial2.write((byte)0);
-    return;
-  }
-  if (c.indexOf("set=?") == 0) {
-    s = String("tf=");
-    s += sp->temp_fans;
-    s += ";tp=";
-    s += sp->temp_pump;
-    s += ";tw=";
-    s += sp->water_min_temp;
-    s += ";bh=";
-    s += sp->barrel_height;
-    s += ";bd=";
-    s += sp->barrel_diameter;
-    s += ";wg=";
-    s += sp->water_per_grad;
-    s += ";wn=";
-    s += sp->water_min_volume;
-    s += ";wx=";
-    s += sp->water_max_volume;   
-    s += ";ws=";
-    s += sp->water_start;
-    s += ";wp=";
-    s += sp->water_period;
-    s += ";";
-    Serial2.println(s);
-    Serial2.write((byte)0);
-    return;
-  }
-  if (c.indexOf("ver=?") == 0) {
-    Serial2.println(version);
-    Serial2.write((byte)0);
-    return;
-  }
-  if (c.indexOf("id=?") == 0) {
-    Serial2.println(idp->id);
-    Serial2.write((byte)0);
-    return;
-  }
-  /*
-   * Read statistics
-   */
-  if (c.indexOf("sta=?") == 0) {
-    s = String("sw=");
-    s += pp->timeWork/1000;
-    s += ";sf=";
-    s += pp->timeFans/1000;
-    s += ";sp=";
-    s += pp->timePump/1000;
-    s += ";";
-    Serial2.println(s);
-    Serial2.write((byte)0);
-    return;
-  }
-  /*
-   * set parameters
-   */
-  if (c.indexOf("set=") == 0) {
-    int i;
-    
-    s = c.substring(4);
-    while ((i = s.indexOf(':')) > 0) {
-      q = s.substring(0,i);
-      if (q.startsWith("bh=")) {
-        sp->barrel_height = (float)(q.substring(3).toInt());
-      }
-      if (q.startsWith("bd=")) {
-        sp->barrel_diameter = (float)(q.substring(3).toInt());
-      }  
-      if (q.startsWith("tf=")) {
-        sp->temp_fans = (float)(q.substring(3).toInt());
-      }  
-      if (q.startsWith("tp=")) {
-        sp->temp_pump = (float)(q.substring(3).toInt());
-      }  
-      if (q.startsWith("tw=")) {
-        sp->water_min_temp = (float)(q.substring(3).toInt());
-      }  
-      if (q.startsWith("ws=")) {
-        sp->water_start = (float)(q.substring(3).toInt());
-      }  
-      if (q.startsWith("wp=")) {
-        sp->water_period = (float)(q.substring(3).toInt());
-      }  
-      if (q.startsWith("wn=")) {
-        sp->water_min_volume = (float)(q.substring(3).toInt());
-      }  
-      if (q.startsWith("wx=")) {
-        sp->water_max_volume = (float)(q.substring(3).toInt());
-      }  
-      if (q.startsWith("wg=")) {
-        sp->water_per_grad = (float)(q.substring(3).toInt());
-      }      
-      s = s.substring(i+1);
-    }
-    EEPROM.put(eeAddress, settings);
-    Serial2.print("ok");
-    Serial2.write((byte)0);
-    return;
-  }
-  
-}
 
