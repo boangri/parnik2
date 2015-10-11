@@ -16,7 +16,7 @@ Average voltage(N_AVG);
 Average distance(N_AVG);
 #include "parnik.h"
 
-const char version[] = "0.9.1 no GPRS"; // split code
+const char version[] = "0.9.2 no GPRS"; // split code
 
 #define TEMP_FANS 27  // temperature for fans switching on
 #define TEMP_PUMP 23 // temperature - do not pump water if cold enought
@@ -100,7 +100,7 @@ Ident ident;
 Ident *idp = &ident;
 
 // Data Ring Buffer
-#define N_RING 1
+#define N_RING 96 // 8 hours (12*8) of data backup
 Packet pack[N_RING];
 Packet *wp, *rp;
 int n_ring, iw, ir;
@@ -122,9 +122,11 @@ void setup(void) {
   EEPROM.get(0, b);
   if ( b == 255) {
     Serial.println("Not Initialized");
-  }
+  } 
   EEPROM.get(0, ident);
   EEPROM.get(eeAddress, settings);
+  print_settings();
+  
   sensors.begin();
   convInProgress = false;
   lastTemp = 0;
@@ -144,14 +146,8 @@ void setup(void) {
   //fanMillis = 0;
   pumpOn = false;
   //pumpMillis = 0; 
-  Serial.println(version);
-  //Serial.print("Settings: temp_fans=");
-  Serial.print(sp->temp_fans);
-  //Serial.print("C temp_pump=");
-  Serial.print(sp->temp_pump);
-  Serial.println("C");
 
-  delay(1000);
+
   useGPRS = false;
 //  gprs.powerUpDown();
 //  for (int i = 0; i < 10; i++) {
@@ -421,29 +417,5 @@ if (!DEBUG) {
       lastLed = millis();
    }
 }  
-
-/*
- * Given a distance to water surface (in sm.)
- * calculates the volume of water in the barrel (in Liters)
- */
-float toVolume(float h) {
-  return barrel_volume*(1.0 - h/barrel_height);
-}  
-
-void serial_output() {
-  //Serial.print(" it=");
-  Serial.print(it);
-  Serial.print(" T1=");
-  Serial.print(pp->temp1);
-  Serial.print(" U=");
-  Serial.print(volt);
-  Serial.print(" Ua=");
-  Serial.print(pp->volt);
-  Serial.print(" H: ");
-  Serial.print(h);
-  Serial.print(" cm. Vol: ");
-  Serial.print(pp->vol);
-  Serial.println(" L.");
-}
 
 
