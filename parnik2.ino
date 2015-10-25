@@ -149,19 +149,19 @@ void setup(void) {
 
 
   useGPRS = false;
-  gprs.powerUpDown();
-  for (int i = 0; i < 5; i++) {
-    if (gprs.init()) {
-      useGPRS = true;
-      break;
-    }
-    delay(1000);
-  }
-  if (useGPRS) {
-    Serial.println("\nGPRS shield initialized");
-  } else {
-    Serial.println("\nGPRS could not be initialized");
-  }
+//  gprs.powerUpDown();
+//  for (int i = 0; i < 5; i++) {
+//    if (gprs.init()) {
+//      useGPRS = true;
+//      break;
+//    }
+//    delay(1000);
+//  }
+//  if (useGPRS) {
+//    Serial.println("\nGPRS shield initialized");
+//  } else {
+//    Serial.println("\nGPRS could not be initialized");
+//  }
   
   //workMillis = 0; // millis();
   lastDist = lastVolt = lastAttempt = 0;
