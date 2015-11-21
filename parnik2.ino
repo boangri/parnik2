@@ -16,7 +16,7 @@ Average voltage(N_AVG);
 Average distance(N_AVG);
 #include "parnik.h"
 
-const char version[] = "0.9.3"; // split code
+const char version[] = "0.9.4"; // split code
 
 #define TEMP_FANS 27  // temperature for fans switching on
 #define TEMP_PUMP 23 // temperature - do not pump water if cold enought
@@ -220,6 +220,9 @@ void loop(void) {
     pp->temp1 = sensors.getTempCByIndex(0);
     if (numberOfDevices > 1) {
       pp->temp2 = sensors.getTempCByIndex(1);
+      if (numberOfDevices > 2) {
+        pp->temp3 = sensors.getTempCByIndex(2);
+      }
     }
     convInProgress = false;
   } 
@@ -331,6 +334,7 @@ if (!DEBUG) {
     wp->ts = ts + (millis() - lastTimeSet)/1000;
     wp->temp1 = pp->temp1;
     wp->temp2 = pp->temp2;
+    wp->temp3 = pp->temp3;
     wp->volt = pp->volt;
     wp->vol = pp->vol;
     wp->dist = pp->dist;

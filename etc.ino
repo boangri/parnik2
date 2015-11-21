@@ -32,6 +32,10 @@ void serial_output() {
   Serial.print(it);
   Serial.print(" T1=");
   Serial.print(pp->temp1);
+  Serial.print(" T2=");
+  Serial.print(pp->temp2);
+  Serial.print(" T3=");
+  Serial.print(pp->temp3);
   Serial.print(" U=");
   Serial.print(volt);
   Serial.print(" Ua=");

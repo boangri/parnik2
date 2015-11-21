@@ -8,7 +8,9 @@ boolean gprs_send()
   request += rp->temp1;
   request += ":";
   request += rp->temp2;
-  request += ":U:U:U:";
+  request += ":";
+  request += rp->temp3;
+  request += ":U:U:";
   request += sp->temp_fans;
   request += ":";
   request += sp->temp_pump;
