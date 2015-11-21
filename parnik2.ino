@@ -9,14 +9,14 @@
 #include <DallasTemperature.h>
 #include <NewPing.h>
 
-#define DEBUG true
+#define DEBUG false
 
 Average voltage(N_AVG);
 //Average temperature(N_AVG);
 Average distance(N_AVG);
 #include "parnik.h"
 
-const char version[] = "0.9.2 no GPRS"; // split code
+const char version[] = "0.9.3"; // split code
 
 #define TEMP_FANS 27  // temperature for fans switching on
 #define TEMP_PUMP 23 // temperature - do not pump water if cold enought
@@ -275,7 +275,7 @@ if (!DEBUG) {
   /*
    * Translate BT input to serial
    */
-  if(Serial2.available() > 0){
+  while(Serial2.available() > 0){
     c = Serial2.read();
     if (c == ';') {
       *bp = 0;
