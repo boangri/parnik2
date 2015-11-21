@@ -28,7 +28,6 @@ void print_settings () {
 //} typedef Settings;
 
 void serial_output() {
-  //Serial.print(" it=");
   Serial.print(it);
   Serial.print(" T1=");
   Serial.print(pp->temp1);

@@ -4,7 +4,7 @@ void bt_cmd(char *cmd) {
 
   if (c.indexOf("par=?") == 0) {
     s = String("t1=");
-    s += pp->temp1;
+    s += pp->temp1);
     s += ";t2=";
     s += pp->temp2;
     s += ";t3=";
@@ -63,11 +63,11 @@ void bt_cmd(char *cmd) {
    */
   if (c.indexOf("sta=?") == 0) {
     s = String("sw=");
-    s += pp->timeWork/1000;
+    s += msec2str(pp->timeWork);
     s += ";sf=";
-    s += pp->timeFans/1000;
+    s += msec2str(pp->timeFans);
     s += ";sp=";
-    s += pp->timePump/1000;
+    s += msec2str(pp->timePump);
     s += ";";
     Serial2.println(s);
     Serial2.write((byte)0);
@@ -121,4 +121,23 @@ void bt_cmd(char *cmd) {
   }
   
 }
+
+// Convert millisec to time in format h:mm:ss 
+String msec2str(long msec) {
+  long secs = msec/1000;
+  int s,m,h,mins;
+  String str;
+  
+  s = secs % 60; //seconds
+  mins = (secs - s)/60;
+  m = mins % 60;
+  h = (mins - m)/60;
+  str = String("");
+  str += h;
+  str += (m < 10) ? ":0" : ":"; 
+  str += m;
+  str += (s < 10) ? ":0" : ":";
+  str += s;
+  return str;
+}  
 
