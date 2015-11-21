@@ -4,7 +4,7 @@ void bt_cmd(char *cmd) {
 
   if (c.indexOf("par=?") == 0) {
     s = String("t1=");
-    s += pp->temp1);
+    s += pp->temp1;
     s += ";t2=";
     s += pp->temp2;
     s += ";t3=";
