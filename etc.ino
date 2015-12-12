@@ -54,5 +54,23 @@ float toVolume(float h) {
   return barrel_volume*(1.0 - h/barrel_height);
 }  
 
+uint32_t mon_days[12] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334};
 
+uint32_t loc2ts(uint8_t yy, uint8_t month, uint8_t day, 
+uint8_t hour, uint8_t minute, uint8_t second) {
+  uint32_t leap_days;
+  uint32_t year, year_sec, leap_sec, mon_sec, day_sec, hour_sec, min_sec;
+  
+  year = yy + 2000;
+  year_sec = 31536000*(year - 1970); 
+  leap_days = (year - 1973)/4 + 1;
+  leap_sec = leap_days * 86400;
+  if (((year % 4) == 0) && (month > 2)) leap_sec += 86400;
+  mon_sec = 86400*mon_days[month -1];
+  day_sec = 86400*(day - 1);
+  hour_sec = 3600*(uint32_t)hour;
+  min_sec = 60*(uint32_t)minute;
+  return year_sec + leap_sec + mon_sec + day_sec + hour_sec + min_sec + second;   
+}
+ 
 
