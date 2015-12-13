@@ -1,7 +1,6 @@
 boolean setup_gprs() {
   byte ret;
-  uint32_t ts;
-  con.print("Resetting...");
+  con.print("Resetting SIM800 module...");
   while (!gprs.init()) {
     con.write('.');
   }
@@ -21,10 +20,10 @@ boolean setup_gprs() {
     con.print("Operator:");
     con.println(gprs.buffer);
   }
-  int res = gprs.getSignalQuality();
-  if (res) {
+  dB = gprs.getSignalQuality();
+  if (dB) {
      con.print("Signal:");
-     con.print(res);
+     con.print(dB);
      con.println("dB");
   }
 
@@ -47,9 +46,14 @@ boolean setup_gprs() {
     con.println(loc.second);
   }
 
-  ts = loc2ts(loc.year, loc.month, loc.day, loc.hour, loc.minute, loc.second);
+  ts0 = loc2ts(loc.year, loc.month, loc.day, loc.hour, loc.minute, loc.second);
+  if (ts0 > 1449990000) {
+    ts = ts0;
+    lastTimeSet = millis();
+  }
+  
   Serial.print("ts=");
-  Serial.println(ts);
+  Serial.println(ts0);
   
   for (;;) {
     if (gprs.httpInit()) break;
@@ -62,17 +66,17 @@ boolean setup_gprs() {
   String coor = "lat=" + String(loc.lat, 6) +
     "&lon=" + String(loc.lon, 6);
   
-  sprintf(mydata, "&ts=%lu", ts);
+  sprintf(mydata, "&ts=%lu", ts0);
   coor += mydata;
   coor.toCharArray(mydata, 180);
-  con.print("Requesting ");
+  con.println("[Requesting]");
   con.print(url);
   con.print('?');
   con.println(mydata);
   gprs.httpConnect(url, mydata);
 
   while (gprs.httpIsConnected() == 0) {
-    con.write('>');
+    //con.write('>');
     for (byte n = 0; n < 25 && !gprs.available(); n++) {
       delay(10);
     }
@@ -96,7 +100,7 @@ boolean setup_gprs() {
   }
 
   // now we have received payload
-  con.print("[Received]");
+  con.println("[Received]");
   con.println(gprs.buffer);
   return true;  
 }
@@ -127,11 +131,10 @@ boolean gprs_send()
   request += rp->vol;
   request += ":";
   request += rp->dist;
-  //request += " HTTP/1.0\r\n\r\n";
   len = request.length()+1;
   request.toCharArray(buf, len);
   
-  Serial.print("Requesting ");
+  Serial.println("[Requesting]");
   Serial.print(url);
   Serial.print('?');
   Serial.println(request);
@@ -139,7 +142,7 @@ boolean gprs_send()
   gprs.httpConnect(url, buf);
 
   while (gprs.httpIsConnected() == 0) {
-    con.write('>');
+    //con.write('>');
     for (byte n = 0; n < 25 && !gprs.available(); n++) {
       delay(10);
     }
@@ -163,39 +166,9 @@ boolean gprs_send()
   }
 
   // now we have received payload
-  con.print("[Received]");
+  con.println("[Received]");
   con.println(gprs.buffer);
   return true;  
-  
-  //char req[] = "GET /cgi-bin/parnik_upd2?ts=1435608900&T=17.25:U:U:U:26:27:U&M=00:00&P=11.7:U&V=173.61:5.92 HTTP/1.0\r\n\r\n";
-  
-
-//  if (gprs.join(apn, user, pass)) {
-//    //Serial.println("joined");
-//    if (gprs.connect (TCP, host, 80, 100)) {
-//      //Serial.println("Connected"); 
-//      gprs.send(buf, len);
-//      //Serial.println(buf);
-//      //Serial.print("req len=");
-//      //Serial.println(len);
-//      //Serial.println("Wait");
-//      len = gprs.recv(buf, sizeof(buf)); 
-//      buf[len+1] = 0;
-//      //Serial.println("Rcv ");    
-//      //Serial.println(buf);
-//      //Serial.print("len=");
-//      //Serial.println(len);
-//    } else {
-//      gprs.close();
-//      Serial.println("con f");
-//      return false;
-//    }  
-//    gprs.close();
-//    return true;
-//  } else {
-//    Serial.println("f join");
-//    return false;
-//  }
 }
 
 

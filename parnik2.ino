@@ -14,7 +14,7 @@ Average voltage(N_AVG);
 Average distance(N_AVG);
 #include "parnik.h"
 
-const char version[] = "0.10.0"; 
+const char version[] = "0.10.1"; 
 
 #define TEMP_FANS 27  // temperature for fans switching on
 #define TEMP_PUMP 23 // temperature - do not pump water if cold enought
@@ -97,7 +97,9 @@ float barrel_volume;
 // Time service
 unsigned long ts; // secs, current time UNIX timestamp
 unsigned long lastTimeSet; //ms
-
+float lat, lon; // Coordinates
+int dB; // GSM signal level, dB
+uint32_t ts0; // Start timestamp;
 
 Parnik parnik;
 Parnik *pp = &parnik;
@@ -153,7 +155,11 @@ void setup(void) {
   //fanMillis = 0;
   pumpOn = false;
   //pumpMillis = 0; 
-
+  
+  // Time service
+  ts = 1400000000; // time is unknown yet;
+  lastTimeSet = 0; // means never
+  
   Serial.println("Trying initialize GPRS");
   if(setup_gprs()) {
     Serial.println("GPRS initialized");
@@ -176,9 +182,7 @@ void setup(void) {
   np = 0;
   barrel_height = sp->barrel_height;
   barrel_volume = sp->barrel_diameter*sp->barrel_diameter*3.14/4000*sp->barrel_height;
-  // Time service
-  ts = 1300000000; // time is unknown yet;
-  lastTimeSet = 0; // means never
+  
   // Ring Buffer
   wp = rp = pack;
   n_ring = iw = ir = 0;
@@ -367,12 +371,12 @@ if (!DEBUG) {
       unsigned long n;
       int i;
       
-      Serial.println("sent!");
+      //Serial.println("sent!");
       response = String(gprs.buffer);
-      Serial.println(response);
+      //Serial.println(response);
       //if ((response.indexOf("200 OK") == 9)&&(response.indexOf("success") > 9)) { // sent successfully
       if (response.indexOf("success") >= 0) { // sent successfully
-        Serial.println("suc");     
+        //Serial.println("suc");     
         response = response.substring(response.indexOf("ts=")+3);
         n = response.toInt();
         if ((ts < 1400000000) && (n > 1400000000)) {
@@ -385,8 +389,8 @@ if (!DEBUG) {
           if ((n > 0) && (n < 999)) {
             sp->temp_fans = ((float)n)/10. -30.;
             EEPROM.put(eeAddress, settings);
-            Serial.print("s tf=");
-            Serial.println(sp->temp_fans);
+            //Serial.print("s tf=");
+            //Serial.println(sp->temp_fans);
           }
         }
         if ((i = response.indexOf("tp=")) > 0) {
@@ -395,8 +399,8 @@ if (!DEBUG) {
           if ((n > 0) && (n < 999)) {
             sp->temp_pump = ((float)n)/10. -30.;
             EEPROM.put(eeAddress, settings);
-            Serial.print("s tp=");
-            Serial.println(sp->temp_pump);
+            //Serial.print("s tp=");
+            //Serial.println(sp->temp_pump);
           }
         }
         n_ring--;
