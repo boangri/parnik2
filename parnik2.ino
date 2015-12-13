@@ -14,7 +14,7 @@ Average voltage(N_AVG);
 Average distance(N_AVG);
 #include "parnik.h"
 
-const char version[] = "0.10.1"; 
+const char version[] = "0.10.2"; 
 
 #define TEMP_FANS 27  // temperature for fans switching on
 #define TEMP_PUMP 23 // temperature - do not pump water if cold enought
@@ -64,11 +64,12 @@ char buf[220];
 //SoftwareSerial mySerial(rxPin, txPin); // RX, TX 
 //DHT dht = DHT();
 // DS18S20 Temperature chip i/o
-OneWire ds(tempPin);  // on pin 10
+OneWire ds(tempPin);  // 
 // Pass our oneWire reference to Dallas Temperature. 
 DallasTemperature sensors(&ds);
 int numberOfDevices; 
 boolean convInProgress;
+boolean tempReady; // set true after the first measurement
 unsigned long lastTemp;
 boolean useGPRS;
 unsigned long lastLed;
@@ -138,6 +139,7 @@ void setup(void) {
   
   sensors.begin();
   convInProgress = false;
+  tempReady = false;
   lastTemp = 0;
   numberOfDevices = sensors.getDeviceCount();
   Serial.print("Locating devices...");
@@ -229,6 +231,7 @@ void loop(void) {
         pp->temp3 = sensors.getTempCByIndex(2);
       }
     }
+    tempReady = true;
     convInProgress = false;
   } 
   
@@ -335,7 +338,7 @@ if (!DEBUG) {
        }
      }  
   }  
-  if ((lastRingWritten == 0)||(millis() - lastRingWritten > 300000)) { // its time to write data into ring buffer
+  if (((lastRingWritten == 0) && tempReady)||(millis() - lastRingWritten > 300000)) { // its time to write data into ring buffer
     wp->ts = ts + (millis() - lastTimeSet)/1000;
     wp->temp1 = pp->temp1;
     wp->temp2 = pp->temp2;

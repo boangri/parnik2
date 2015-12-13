@@ -1,5 +1,6 @@
 boolean setup_gprs() {
   byte ret;
+  String oper = "unknown";
   con.print("Resetting SIM800 module...");
   while (!gprs.init()) {
     con.write('.');
@@ -19,6 +20,8 @@ boolean setup_gprs() {
   if (gprs.getOperatorName()) {
     con.print("Operator:");
     con.println(gprs.buffer);
+    oper = gprs.buffer;
+    oper.replace(" ", "%20");
   }
   dB = gprs.getSignalQuality();
   if (dB) {
@@ -64,7 +67,7 @@ boolean setup_gprs() {
   }
   char mydata[180];
   String coor = "lat=" + String(loc.lat, 6) +
-    "&lon=" + String(loc.lon, 6);
+    "&lon=" + String(loc.lon, 6)+ "&op=" + oper;
   
   sprintf(mydata, "&ts=%lu", ts0);
   coor += mydata;
